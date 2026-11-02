@@ -115,3 +115,17 @@ test('una sola lista de CORS para el bucket, con subida desde el navegador', () 
   const cors = JSON.parse(readFileSync(join(RAIZ, 'comun', 'cors-bucket.json'), 'utf8'));
   for (const metodo of ['GET', 'HEAD', 'PUT', 'OPTIONS']) assert.ok(cors[0].method.includes(metodo), metodo);
 });
+
+test('catálogo íntegro: 21 géneros, 23 subgéneros, 6 demografías y los dos formatos', async () => {
+  const c = await import('../estudio/catalogo.mjs');
+  const valores = lista => lista.map(x => x.valor);
+  assert.deepEqual(valores(c.GENEROS), ['accion', 'fantasia', 'isekai', 'mecha', 'romcom', 'drama', 'slice_of_life',
+    'terror', 'psicologico', 'misterio', 'deportes', 'sci_fi', 'aventura', 'sobrenatural', 'supervivencia', 'videojuego',
+    'donghua', 'transmigracion', 'naufragio', 'ascenso_social', 'sistema_juego']);
+  assert.deepEqual(valores(c.SUBGENEROS), ['psicologico', 'romance', 'ecchi', 'harem', 'harem_inverso', 'comedia', 'dark',
+    'gore', 'misterio', 'revenge', 'overpowered', 'slice_of_life', 'musica', 'deporte', 'mafia', 'escolar', 'militar',
+    'reencarnacion', 'viaje_tiempo', 'apocalipsis', 'idols', 'medicina', 'sistema_awakening']);
+  assert.deepEqual(valores(c.DEMOGRAFIAS), ['shonen', 'shojo', 'seinen', 'josei', 'kodomomuke', 'donghua']);
+  assert.deepEqual(valores(c.FORMATOS), ['9:16', '16:9']);
+  for (const lista of [c.GENEROS, c.SUBGENEROS, c.DEMOGRAFIAS]) assert.ok(lista.every(x => x.etiqueta && x.etiqueta.length > 3));
+});
