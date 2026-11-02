@@ -79,7 +79,8 @@ export function direccionDeAspecto(formulario) {
 
 // Ficha maestra: UNA sola imagen limpia por personaje (sección 10.1).
 export function promptFichaPersonaje(p, formulario) {
-  const mujer = p.sexo === 'mujer' || (!p.sexo && /\b(woman|female|girl|lady|she|her)\b/i.test(p.appearance || ''));
+  // Los personajes creados antes de guardar el sexo se reconocen por su aspecto.
+  const mujer = p.sexo === 'mujer' || (!p.sexo && (/\b(woman|female|girl|lady|she|her)\b/i.test(p.appearance || '') || /\b(mujer|dama|señora|señorita|chica|muchacha|joven esbelta|femenin\w*|ella)\b/i.test(p.aspecto || '')));
   const belleza = mujer
     ? `a strikingly beautiful adult woman, ${p.edad} years old`
     : p.sexo === 'hombre' ? `a handsome adult man, ${p.edad} years old` : `a ${p.edad}-year-old adult`;
