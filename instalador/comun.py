@@ -22,7 +22,9 @@ DIRECTORIO_LOCAL = Path(os.environ.get('DRAMA_STUDIO_HOME', str(Path.home() / '.
 ARCHIVO_ESTADO = DIRECTORIO_LOCAL / 'estado.json'
 ARCHIVO_CLAVE = DIRECTORIO_LOCAL / 'clave-cuenta-servicio.json'
 
-NO_ENCONTRADO = re.compile(r'\bNOT_FOUND\b|\b404\b|not found|does not exist|matched no objects|was not found', re.I)
+# «Cannot find job» es como responde gcloud run jobs describe cuando el
+# montador aún no existe (fallo real de la primera instalación del montador).
+NO_ENCONTRADO = re.compile(r'\bNOT_FOUND\b|\b404\b|not found|does not exist|matched no objects|was not found|cannot find|could not find', re.I)
 
 
 class FalloInstalacion(Exception):

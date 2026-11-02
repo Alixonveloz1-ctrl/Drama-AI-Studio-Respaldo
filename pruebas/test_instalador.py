@@ -115,7 +115,8 @@ class Mundo:
             self.claves.remove(a[4])
             return 0, '', ''
         if a[:3] == ['run', 'jobs', 'describe']:
-            return (0, '{}', '') if self.trabajo else (1, '', 'NOT_FOUND: Job not found')
+            # El mensaje real de gcloud cuando el trabajo aún no existe.
+            return (0, '{}', '') if self.trabajo else (1, '', 'ERROR: (gcloud.run.jobs.describe) Cannot find job [drama-studio-montage].')
         if a[:3] == ['artifacts', 'repositories', 'describe']:
             return (0, '{}', '') if self.repositorio else (1, '', 'NOT_FOUND: Repository not found')
         if a[:3] == ['artifacts', 'repositories', 'create']:
