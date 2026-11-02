@@ -30,7 +30,7 @@ import { segundosDe, esEcchi } from './prompts.mjs';
 import { direccionDeAspecto, textoDelLugar } from './imagenes.mjs';
 import { contarPalabras } from './guion.mjs';
 import { explicar } from './red.mjs';
-import { escapar, avisar, verImagen } from './interfaz.mjs';
+import { escapar, avisar, verImagen, sinMoverPantalla } from './interfaz.mjs';
 
 let raiz = null;
 let ocupado = null;
@@ -63,7 +63,7 @@ export function montarEscenas(contenedor) {
 }
 
 export function pintarEscenas() {
-  fila = fila.then(() => new Promise(listo => requestAnimationFrame(() => { pintarAhora(); listo(); })));
+  fila = fila.then(() => new Promise(listo => requestAnimationFrame(() => { sinMoverPantalla(pintarAhora); listo(); })));
   return fila;
 }
 

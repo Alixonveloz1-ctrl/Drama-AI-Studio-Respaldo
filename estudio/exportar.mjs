@@ -18,7 +18,7 @@ import { alinearEscena } from './subtitulos.mjs';
 import { montar, estadoDelEpisodio } from './montaje.mjs';
 import { crearControl } from './texto.mjs';
 import { explicar, llamar } from './red.mjs';
-import { escapar, avisar } from './interfaz.mjs';
+import { escapar, avisar, sinMoverPantalla } from './interfaz.mjs';
 
 let raiz = null, ocupado = null, ultimoError = null, enlaces = {};
 let fila = Promise.resolve();
@@ -29,7 +29,7 @@ export function montarExportar(contenedor) {
 }
 
 export function pintarExportar() {
-  fila = fila.then(() => new Promise(listo => requestAnimationFrame(() => { pintarAhora().finally(listo); })));
+  fila = fila.then(() => new Promise(listo => requestAnimationFrame(() => { sinMoverPantalla(pintarAhora).finally(listo); })));
   return fila;
 }
 

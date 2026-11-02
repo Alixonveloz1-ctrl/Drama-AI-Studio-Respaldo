@@ -24,7 +24,7 @@ import { vocesDisponibles, asignarVoces, muestraDeVoz } from './voces.mjs';
 import { escenasDelEpisodio } from './desglose.mjs';
 import { crearControl } from './texto.mjs';
 import { explicar } from './red.mjs';
-import { escapar, avisar, verImagen } from './interfaz.mjs';
+import { escapar, avisar, verImagen, sinMoverPantalla } from './interfaz.mjs';
 
 const MODELOS = [
   { valor: 'gemini-3.1-flash-image', etiqueta: 'Nano Banana 2 (predeterminado)' },
@@ -69,7 +69,7 @@ export function montarPersonajes(contenedor) {
 }
 
 export function pintarPersonajes() {
-  fila = fila.then(() => new Promise(listo => requestAnimationFrame(() => { pintarAhora(); listo(); })));
+  fila = fila.then(() => new Promise(listo => requestAnimationFrame(() => { sinMoverPantalla(pintarAhora); listo(); })));
   return fila;
 }
 

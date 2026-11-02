@@ -39,3 +39,17 @@ export function verImagen(url, texto = '') {
   capa.addEventListener('click', () => capa.remove());
   document.body.append(capa);
 }
+
+// Redibuja sin mover la pantalla. Fallo visto por el dueño: al pulsar un
+// botón (generar una ficha, una imagen, escuchar una voz) la pantalla volvía
+// arriba del todo. Se guarda dónde estaba y se vuelve ahí tras el redibujo
+// (y otra vez cuando el navegador termina de colocarlo).
+export function sinMoverPantalla(redibujar) {
+  const y = window.scrollY;
+  const resultado = redibujar();
+  const volver = () => { if (Math.abs(window.scrollY - y) > 2) window.scrollTo(0, y); };
+  volver();
+  requestAnimationFrame(volver);
+  setTimeout(volver, 120);
+  return resultado;
+}
