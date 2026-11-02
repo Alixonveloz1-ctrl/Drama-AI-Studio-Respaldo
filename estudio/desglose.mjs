@@ -17,6 +17,20 @@
 //  · El director de arte revisa cada 5 escenas. Cuando corrige un plano NO
 //    borra nada: marca la imagen como obsoleta y deja decidir. Si no pudo
 //    revisar, lo dice: nunca informa «sin fallos» de algo que no miró.
+//
+// CONTINUIDAD DE ESCENA (fallo real visto por el dueño: una mujer que
+// desaparece cuando el hombre despierta, un hombre que aparece de la nada,
+// un plato roto que se esfuma y una mujer que salta a la cama):
+//  · PUESTA EN ESCENA: quién está en la escena desde el principio. Nadie
+//    aparece sin entrar ni desaparece sin salir, y se dice en qué plano.
+//  · ENCUADRE de cada plano (general, medio, primer plano, detalle). Solo un
+//    encuadre cerrado puede dejar fuera a alguien que está presente.
+//  · Con dos o más personas, el primer plano es GENERAL y las muestra a todas
+//    en su sitio: es el mapa de la escena para todos los planos siguientes.
+//  · ESTADO de cada plano: dónde está y qué hace CADA persona presente (se
+//    vea o no) y cómo están los objetos que importan. CAMBIO: qué es distinto
+//    respecto al plano anterior, para que la imagen no copie la anterior.
+//  · Todo se comprueba aquí, en el texto, ANTES de pagar ninguna imagen.
 // ════════════════════════════════════════════════════════════════
 import { pedirTexto, parsearJSON } from './texto.mjs';
 import { contarPalabras, normalizar } from './guion.mjs';
@@ -24,7 +38,7 @@ import { contextoEleccion, segundosDe, esEcchi } from './prompts.mjs';
 import { direccionDeAspecto } from './imagenes.mjs';
 
 const POR_LLAMADA = 5;          // escenas como mucho por petición
-const PLANOS_POR_LLAMADA = 24;  // y planos mínimos sumados: la respuesta tiene que caber en el tiempo
+const PLANOS_POR_LLAMADA = 16;  // y planos mínimos sumados: la respuesta tiene que caber en el tiempo
 const REVISAR_CADA = 5;         // el director de arte revisa cada 5 escenas
 const INTENTOS = 3;
 
@@ -41,6 +55,16 @@ export function maximoPlanos(escena) {
   return Math.max(minimoPlanos(escena) + 1, Math.ceil(segundosDe(contarPalabras(textoEscena(escena))) / 1.5) + 1);
 }
 
+export const ENCUADRES = ['general', 'medio', 'primer_plano', 'detalle'];
+export const NOMBRE_ENCUADRE = { general: 'General', medio: 'Medio', primer_plano: 'Primer plano', detalle: 'Detalle' };
+
+// Nombre de un personaje o de una variante (la variante se llama como su madre).
+export function nombreDe(u, id) {
+  const v = (u.variantes || []).find(x => x.id === id);
+  const madre = v ? u.personajes.find(p => p.id === v.madre) : null;
+  return madre?.nombre || u.personajes.find(p => p.id === id)?.nombre || id;
+}
+
 function fichaVisual(u) {
   const personajes = u.personajes.map(p => `- ${p.id} = ${p.nombre}: ${p.appearance}`).join('\n');
   const variantes = (u.variantes || []).map(v => `- ${v.id} = ${v.nombre} (variante de ${v.madre}): ${v.cambio}`).join('\n');
@@ -53,7 +77,9 @@ function escenasParaPrompt(u, escenas) {
   return escenas.map(e => {
     const lineas = e.lineas.map(l => `${l.tipo === 'sistema' ? 'SISTEMA' : (nombres[l.personaje] || l.nombre || l.personaje)}${l.tipo === 'pensamiento' ? ' (piensa)' : ''}: ${l.texto}`).join('\n');
     const palabras = contarPalabras(textoEscena(e));
+    const reparto = (e.personajes || []).map(id => `${id} = ${nombres[id] || id}`).join(', ');
     return `═══ ESCENA ${e.id} — «${e.titulo}» — escenario ${e.escenario} — ${palabras} palabras (≈ ${Math.round(segundosDe(palabras))} s de audio) — MÍNIMO ${minimoPlanos(e)} planos, máximo ${maximoPlanos(e)}
+Personajes de esta escena según el guion: ${reparto || 'ver las líneas'}
 Lo que se ve al empezar: ${e.accion}
 ${lineas}`;
   }).join('\n\n');
@@ -78,13 +104,23 @@ TRUCOS DE ENCUBRIMIENTO (obligatorios, ocultan los fallos de la IA):
 - El primer plano de reacción es el comodín: barato, tapa cualquier fallo del plano anterior y refuerza la reacción del ciclo.
 - Para un salto de tiempo, usa un plano general de paisaje (cobertura) en vez de generar una transición.
 
+PUESTA EN ESCENA Y CONTINUIDAD (lo más importante; un fallo aquí tira imágenes buenas a la basura):
+- Antes de los planos decides "presentes": quién está físicamente en la escena desde el principio. Si alguien despierta, se levanta o habla más tarde, YA estaba ahí desde el primer plano (tirado, dormido, en un rincón).
+- Nadie aparece de la nada ni desaparece por arte de magia. Si alguien llega, el plano en que entra lo dice en "entran"; si se va, el plano en que sale lo dice en "salen".
+- "encuadre" de cada plano: "general" (se ve el lugar y a todos los presentes), "medio" (una o dos personas de cintura para arriba), "primer_plano" (una cara) o "detalle" (una mano, un objeto). Solo un encuadre cerrado deja fuera a alguien presente; un plano general muestra a TODOS los presentes.
+- Si al empezar hay dos o más presentes, el PRIMER plano es "general" y los muestra a todos en su sitio: es el mapa de la escena.
+- "personajes" son SOLO los que se ven en el encuadre. Quien está presente pero fuera de cuadro sigue en la escena.
+- "estado" (EN INGLÉS) de cada plano: dónde está y qué hace en ese instante CADA persona presente, se vea o no ("Su Mei stands at the table on the left, checking a cloth bag; Lin Fan lies unconscious on the dirt floor near the stove"), y cómo están los objetos que importan (un cuenco roto sigue roto en el suelo). Nombra a cada presente por su nombre.
+- "cambio" (EN INGLÉS, desde el segundo plano): qué es distinto respecto al plano anterior: quién se movió, a dónde, qué postura nueva, qué objeto cambió ("Lin Fan has tripped and is falling forward onto Su Mei, who was kneeling by the bed"). Si en el ancla ocurre una acción (cae, se levanta, empuja), la imagen muestra ese momento, no el anterior.
+- Para que una acción entre dos personas sea posible, las dos están colocadas a su alcance desde el plano anterior (si él cae encima de ella, ella está en su camino).
+
 INVENTARIO CERRADO DEL LUGAR: solo existen los muebles y objetos grandes que la descripción del escenario menciona o que cualquiera daría por sentados en ESE lugar. Si la acción necesita algo que el lugar no tiene, reescribe la acción con lo que sí hay. En un interior, la lluvia o la nieve solo se ven por la ventana o la puerta, nunca dentro.
 
 LITERALIDAD: una figura sobre un sentimiento («le hervía la sangre») se filma como gesto o postura, nunca como efecto especial.
 
 CADA "prompt" (EN INGLÉS):
 - Empieza con "Scene with [nombre] ([media frase de identidad: pelo y ropa del momento])" por cada personaje visible, o "Scene without people:".
-- Describe el encuadre (wide shot / medium shot / close-up / insert), la acción del instante del ancla, el lugar y la luz.
+- Describe el encuadre (wide shot / medium shot / close-up / insert, igual que "encuadre"), dónde está cada visible en el lugar, la acción del instante del ancla y la luz.
 - Personajes de lado, de tres cuartos o de espaldas: nunca mirando a cámara.
 - Prohibido: naked, nude, explicit, sexual, genitals, nipples. Sin texto, letras ni carteles legibles.
 "movimiento" (EN INGLÉS, solo en planos de acción): la acción breve y clara que hará el video, sin movimientos de cámara inventados.
@@ -109,71 +145,117 @@ Formato de imagen: ${datos.formulario.formato === '16:9' ? '16:9 horizontal' : '
 ${escenasParaPrompt(u, escenas)}
 ${extra}
 Devuelve JSON con EXACTAMENTE ${escenas.length} escenas, en el mismo orden:
-{"escenas":[{"id":"${escenas[0].id}","planos":[{"tipo":"accion | cobertura","ancla":"palabras copiadas del texto","personajes":["c1"],"peso":3,"prompt":"Scene with …","movimiento":"… (solo acción)","sistema":"texto de la línea del Sistema que aparece sobre este plano, o vacío"}]}]}`,
+{"escenas":[{"id":"${escenas[0].id}","presentes":["c1","c2"],"planos":[{"tipo":"accion | cobertura","encuadre":"general | medio | primer_plano | detalle","ancla":"palabras copiadas del texto","personajes":["c1"],"entran":[],"salen":[],"estado":"where every present person is and what they do at this instant, by name, plus key objects","cambio":"what changed since the previous shot (empty only in the first shot)","peso":3,"prompt":"Scene with …","movimiento":"… (solo acción)","sistema":"texto de la línea del Sistema que aparece sobre este plano, o vacío"}]}]}`,
     temperatura: 0.5,
   };
 }
 
 // ─── Revisión ───
+const MAX_VISIBLES = 4;   // el servidor adjunta como mucho 4 fichas por imagen
+
+function encuadreDe(valor) {
+  const v = normalizar(valor).replace(/\s+/g, '_');
+  if (/^(general|wide|plano_general|gran_plano)/.test(v)) return 'general';
+  if (/^(medio|medium|plano_medio|americano)/.test(v)) return 'medio';
+  if (/^(primer|close)/.test(v)) return 'primer_plano';
+  if (/^(detalle|insert|detail)/.test(v)) return 'detalle';
+  return '';
+}
+
 export function validarDesglose(json, escenas, universo) {
   const problemas = [];
   const ids = new Set([...universo.personajes.map(p => p.id), ...(universo.variantes || []).map(v => v.id)]);
+  const lista = v => [...new Set((Array.isArray(v) ? v : []).map(String).filter(id => ids.has(id)))];
   const crudas = Array.isArray(json?.escenas) ? json.escenas : [];
-  const resultado = {};
+  const resultado = {}, presentesDe = {};
   let accion = 0, total = 0;
   for (const escena of escenas) {
     const c = crudas.find(x => x?.id === escena.id);
     if (!c) { problemas.push(`falta el desglose de la escena ${escena.id}`); continue; }
+    const presentes = lista(c.presentes);
     const planos = (Array.isArray(c.planos) ? c.planos : []).map(p => ({
       tipo: p?.tipo === 'accion' ? 'accion' : 'cobertura',
+      encuadre: encuadreDe(p?.encuadre),
       ancla: String(p?.ancla || '').trim(),
-      personajes: [...new Set((Array.isArray(p?.personajes) ? p.personajes : []).map(String).filter(id => ids.has(id)))].slice(0, 3),
+      personajes: lista(p?.personajes).slice(0, MAX_VISIBLES),
+      entran: lista(p?.entran),
+      salen: lista(p?.salen),
+      estado: String(p?.estado || '').trim(),
+      cambio: String(p?.cambio || '').trim(),
       peso: Math.max(1, Math.min(5, Math.round(Number(p?.peso) || 2))),
       prompt: String(p?.prompt || '').trim(),
       movimiento: String(p?.movimiento || '').trim(),
       sistema: String(p?.sistema || '').trim(),
     }));
+    const donde = i => `el plano ${i + 1} de la escena ${escena.id}`;
     if (planos.length < minimoPlanos(escena)) problemas.push(`la escena ${escena.id} tiene ${planos.length} planos y necesita al menos ${minimoPlanos(escena)}`);
     if (planos.length > maximoPlanos(escena)) problemas.push(`la escena ${escena.id} tiene demasiados planos (${planos.length}; máximo ${maximoPlanos(escena)})`);
     // Lo que se ve al empezar va primero: es el principio de la escena.
     const texto = normalizar(escena.accion + ' ' + textoEscena(escena));
     let desde = 0;
+    // Quién está en la escena en cada momento.
+    const actual = new Set(presentes);
+    const algunaVez = new Set(presentes);
     planos.forEach((p, i) => {
       const ancla = normalizar(p.ancla);
       const valida = contarPalabras(p.ancla) >= 3;
       const pos = valida ? texto.indexOf(ancla, desde) : -1;
       if (pos >= 0) desde = pos;
-      else if (valida && texto.includes(ancla)) problemas.push(`el plano ${i + 1} de la escena ${escena.id} retrocede respecto al orden del texto`);
+      else if (valida && texto.includes(ancla)) problemas.push(`${donde(i)} retrocede respecto al orden del texto`);
       else problemas.push(`el ancla del plano ${i + 1} de la escena ${escena.id} no está copiada literalmente del texto`);
-      if (p.prompt.length < 40) problemas.push(`el plano ${i + 1} de la escena ${escena.id} no tiene un prompt suficiente`);
-      if (/looking at (?:the )?camera|looks at (?:the )?camera|faces the camera|addressing the viewer/i.test(p.prompt)) problemas.push(`en el plano ${i + 1} de la escena ${escena.id} alguien mira a cámara`);
+      if (p.prompt.length < 40) problemas.push(`${donde(i)} no tiene un prompt suficiente`);
+      if (/looking at (?:the )?camera|looks at (?:the )?camera|faces the camera|addressing the viewer/i.test(p.prompt)) problemas.push(`en ${donde(i)} alguien mira a cámara`);
       if (p.tipo === 'accion' && !p.movimiento) problemas.push(`el plano de acción ${i + 1} de la escena ${escena.id} no dice qué movimiento hace el video`);
+      if (!p.encuadre) problemas.push(`${donde(i)} no dice su encuadre (general, medio, primer_plano o detalle)`);
+
+      // Continuidad de presencia.
+      for (const id of p.entran) { actual.add(id); algunaVez.add(id); }
+      p.presentes = [...actual];
+      for (const id of p.personajes) if (!actual.has(id)) problemas.push(`${nombreDe(universo, id)} aparece en ${donde(i)} sin estar en la escena (debe estar en "presentes" o entrar en "entran")`);
+      const fuera = p.presentes.filter(id => !p.personajes.includes(id));
+      if (p.encuadre === 'general' && fuera.length && p.personajes.length < MAX_VISIBLES) problemas.push(`${donde(i)} es general y deja fuera a ${fuera.map(id => nombreDe(universo, id)).join(', ')}, que está en la escena; un plano general muestra a todos`);
+      if (i === 0 && presentes.length >= 2 && p.encuadre !== 'general') problemas.push(`la escena ${escena.id} empieza con dos o más personas y su primer plano tiene que ser general, con todas en su sitio`);
+      const estado = normalizar(p.estado);
+      if (p.estado.length < 20) problemas.push(`${donde(i)} no describe en "estado" dónde está cada persona presente`);
+      else {
+        const omitidos = p.presentes.filter(id => !estado.includes(normalizar(nombreDe(universo, id))));
+        if (omitidos.length) problemas.push(`el estado del plano ${i + 1} de la escena ${escena.id} no dice dónde está ${omitidos.map(id => nombreDe(universo, id)).join(', ')}`);
+      }
+      if (i > 0 && p.cambio.length < 15) problemas.push(`${donde(i)} no dice en "cambio" qué es distinto respecto al plano anterior`);
+      for (const id of p.salen) actual.delete(id);
     });
+    // Quien habla en la escena tiene que estar en ella en algún momento.
+    const hablan = [...new Set(escena.lineas.filter(l => l.tipo !== 'sistema' && ids.has(l.personaje)).map(l => l.personaje))];
+    const ausentes = hablan.filter(id => !algunaVez.has(id) && ![...algunaVez].some(v => (universo.variantes || []).find(x => x.id === v)?.madre === id));
+    if (ausentes.length) problemas.push(`en la escena ${escena.id} habla ${ausentes.map(id => nombreDe(universo, id)).join(', ')} pero no está en "presentes" ni entra en ningún plano`);
     accion += planos.filter(p => p.tipo === 'accion').length;
     total += planos.length;
     resultado[escena.id] = planos;
+    presentesDe[escena.id] = presentes;
   }
   if (total >= 6) {
     const parte = accion / total;
     if (parte < 0.55 || parte > 0.85) problemas.push(`la proporción de planos de acción es ${Math.round(parte * 100)} % y debe rondar el 70 %`);
   }
-  return { problemas, resultado };
+  return { problemas, resultado, presentes: presentesDe };
 }
 
 export const SISTEMA_ARTE = `Eres el DIRECTOR DE ARTE y de continuidad. Lees prompts de imagen YA ESCRITOS y los contrastas con su escenario y con el texto de la escena, para cazar fallos antes de que cuesten imágenes: atrezo imposible (un mueble que ese lugar no tiene), clima imposible (lluvia dentro de un interior), un personaje en un sitio en el que no puede estar, ropa o heridas que cambian sin motivo, alguien mirando a cámara.
+CONTINUIDAD DE PLANO A PLANO (lo que más se rompe): alguien que desaparece sin haber salido o aparece sin haber entrado; alguien que cambia de sitio sin que el texto lo mueva (estaba en la mesa y salta a la cama); un objeto que se esfuma (un cuenco roto que ya no está en el suelo); un plano que repite la postura del anterior cuando su ancla dice que ocurre una acción (cae, se levanta, empuja); dos personas que tienen que tocarse y no están a su alcance.
 No cambias la historia ni el encuadre que funciona. Solo corriges lo que está mal, y explicas por qué.
 Respondes SOLO JSON válido.`;
 
 export function promptRevision(datos, escenas) {
   const u = datos.universo;
-  const lista = escenas.map(e => `═══ ESCENA ${e.id} — escenario ${e.escenario}\nTexto: ${textoEscena(e)}\n${(e.planos || []).map((p, i) => `Plano ${i + 1} (${p.tipo}): ${p.prompt}`).join('\n')}`).join('\n\n');
+  const nombres = ids => (ids || []).map(id => nombreDe(u, id)).join(', ') || 'nadie';
+  const lista = escenas.map(e => `═══ ESCENA ${e.id} — escenario ${e.escenario} — presentes al empezar: ${nombres(e.presentes)}\nLo que se ve al empezar: ${e.accion}\nTexto: ${textoEscena(e)}\n${(e.planos || []).map((p, i) => `Plano ${i + 1} (${p.tipo}, ${NOMBRE_ENCUADRE[p.encuadre] || 'sin encuadre'}) ancla «${p.ancla}» · se ve: ${nombres(p.personajes)}${p.entran?.length ? ' · entran: ' + nombres(p.entran) : ''}${p.salen?.length ? ' · salen: ' + nombres(p.salen) : ''}\n  Estado: ${p.estado || '—'}\n  Cambio: ${p.cambio || '—'}\n  Prompt: ${p.prompt}`).join('\n')}`).join('\n\n');
   return {
     sistema: SISTEMA_ARTE,
     mensaje: `${fichaVisual(u)}
 
 ${lista}
 
-Devuelve JSON: {"revisadas":["ids de las escenas que revisaste"],"correcciones":[{"escena":"e1","plano":1,"prompt":"prompt completo corregido en inglés","motivo":"qué estaba mal, en español"}]}
+Devuelve JSON: {"revisadas":["ids de las escenas que revisaste"],"correcciones":[{"escena":"e1","plano":1,"prompt":"prompt completo corregido en inglés","estado":"estado corregido en inglés (o vacío si estaba bien)","cambio":"cambio corregido en inglés (o vacío)","motivo":"qué estaba mal, en español"}]}
 Si un plano está bien, no lo incluyas. "revisadas" lista TODAS las escenas que de verdad miraste.`,
     temperatura: 0.3,
   };
@@ -193,7 +275,7 @@ async function pedirValidado(prompt, validar, { control, aviso, etiqueta }) {
     }
     const r = validar(json);
     if (!r.problemas.length) return r;
-    ultimo = r.problemas.slice(0, 8).join('; ');
+    ultimo = r.problemas.slice(0, 12).join('; ');
     comentario = `\n\nREINTENTO OBLIGATORIO: se rechazó porque ${ultimo}. Corrígelo y devuelve el desglose completo.`;
   }
   throw Object.assign(new Error(`${etiqueta}: el director no cumplió las reglas después de ${INTENTOS} intentos (${ultimo}). Lo ya guardado se conserva.`), { tipo: 'formato' });
@@ -218,9 +300,9 @@ export function agrupar(escenas) {
 }
 
 // Desglosa las escenas que no lo tienen (o solo una, si se pide rehacerla).
-export async function desglosar(datos, numero, { control, aviso, guardar, soloEscena, alAvanzar }) {
+export async function desglosar(datos, numero, { control, aviso, guardar, soloEscena, rehacerTodo, alAvanzar }) {
   const todas = escenasDelEpisodio(datos, numero);
-  const pendientes = soloEscena ? todas.filter(e => e.id === soloEscena) : todas.filter(e => !e.planos?.length);
+  const pendientes = soloEscena ? todas.filter(e => e.id === soloEscena) : rehacerTodo ? todas : todas.filter(e => !e.planos?.length);
   const informe = { revisadas: 0, correcciones: 0, sinRevisar: [] };
   const grupos = agrupar(pendientes);
   let hechas = 0, porRevisar = [];
@@ -238,16 +320,17 @@ export async function desglosar(datos, numero, { control, aviso, guardar, soloEs
   };
   for (const [g, grupo] of grupos.entries()) {
     const etiqueta = `Desglose de planos: escenas ${hechas + 1} a ${hechas + grupo.length} de ${pendientes.length}`;
-    let resultado;
+    let resultado, presentes;
     try {
-      ({ resultado } = await pedirValidado(promptDesglose(datos, grupo), j => validarDesglose(j, grupo, datos.universo), { control, aviso, etiqueta }));
+      ({ resultado, presentes } = await pedirValidado(promptDesglose(datos, grupo), j => validarDesglose(j, grupo, datos.universo), { control, aviso, etiqueta }));
     } catch (e) {
       // Si no cupo en el tiempo con varias escenas, se reintenta de una en una.
       if (e.tipo !== 'tiempo' || grupo.length === 1) throw e;
-      resultado = {};
+      resultado = {}; presentes = {};
       for (const escena of grupo) {
         const r = await pedirValidado(promptDesglose(datos, [escena]), j => validarDesglose(j, [escena], datos.universo), { control, aviso, etiqueta: `Desglose de la escena ${escena.id}` });
         Object.assign(resultado, r.resultado);
+        Object.assign(presentes, r.presentes);
       }
     }
     for (const escena of grupo) {
@@ -255,6 +338,7 @@ export async function desglosar(datos, numero, { control, aviso, guardar, soloEs
       // aparte por si se quieren recuperar.
       if (escena.planos?.length) escena.planosAnteriores = escena.planos;
       escena.planos = resultado[escena.id].map((p, n) => ({ ...p, id: `${escena.id}-${n + 1}` }));
+      escena.presentes = presentes[escena.id] || [];
     }
     hechas += grupo.length;
     await guardar?.();
@@ -282,9 +366,16 @@ export async function revisar(datos, escenas, { control, aviso, guardar }) {
     const escena = escenas.find(e => e.id === String(c?.escena));
     const plano = escena?.planos?.[Number(c?.plano) - 1];
     const nuevo = String(c?.prompt || '').trim();
-    if (!plano || nuevo.length < 40 || nuevo === plano.prompt) continue;
+    const estado = String(c?.estado || '').trim();
+    const cambio = String(c?.cambio || '').trim();
+    const cambiaPrompt = nuevo.length >= 40 && nuevo !== plano?.prompt;
+    const cambiaEstado = estado.length >= 20 && estado !== plano?.estado;
+    const cambiaCambio = cambio.length >= 15 && cambio !== plano?.cambio;
+    if (!plano || !(cambiaPrompt || cambiaEstado || cambiaCambio)) continue;
     plano.promptAnterior = plano.prompt;
-    plano.prompt = nuevo;
+    if (cambiaPrompt) plano.prompt = nuevo;
+    if (cambiaEstado) plano.estado = estado;
+    if (cambiaCambio) plano.cambio = cambio;
     plano.revision = String(c?.motivo || '').trim();
     // No se borra nada: lo ya generado queda marcado como obsoleto.
     if (plano.imagen) plano.imagenObsoleta = true;

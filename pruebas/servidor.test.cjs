@@ -621,3 +621,42 @@ test('imagen: la dirección de aspecto del proyecto y la regla ecchi llegan al m
   assert.ok(!/\bnude\b/.test(ultimo), 'la dirección también pasa por el saneado');
   assert.ok(ultimo.indexOf('PROJECT LOOK') < ultimo.indexOf('Scene to show:'));
 });
+
+test('imagen: estado de la escena, fuera de cuadro, cambio y mapa de la escena; la regla 2 ya no borra a quien sigue en la habitación', async () => {
+  conCuentaDeServicio();
+  const { llamadasVertex } = vertexImagen(conImagen);
+  const imagen = require('../api/imagen');
+  const salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'plano-e1-3', prompt: 'Scene with Lin Fan (topknot, grey linen): medium shot, he sits up on the dirt floor rubbing his head.',
+    personajes: [{ nombre: 'Lin Fan', ruta: base + 'personaje-c1.png' }], continuidad: base + 'plano-e1-2.png', situacion: base + 'plano-e1-1.png',
+    estado: 'Lin Fan sits up on the dirt floor near the stove; Su Mei stands at the table on the left, checking a cloth bag.',
+    cambio: 'Lin Fan, who was lying unconscious, now sits up rubbing his head.', fuera: ['Su Mei'] }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  const partes = llamadasVertex[0].cuerpo.contents[0].parts;
+  assert.match(partes[2].text, /^This reference is the immediately preceding physical state/);
+  assert.match(partes[4].text, /^SCENE MAP above: the opening wide shot of this SAME scene/);
+  assert.match(partes[6].text, /^CHARACTER REFERENCE above: this is Lin Fan/);
+  const ultimo = partes.at(-1).text;
+  assert.ok(!/nobody else beyond those mentioned/.test(ultimo), 'con estado no se dice «a nadie más»');
+  assert.match(ultimo, /PRESENT BUT OUT OF FRAME \(still in the room; this framing leaves them out\): Su Mei\./);
+  assert.match(ultimo, /SCENE STATE AT THIS INSTANT[^\n]*\nLin Fan sits up on the dirt floor near the stove; Su Mei stands at the table/);
+  assert.match(ultimo, /WHAT CHANGED SINCE THE PREVIOUS SHOT[^\n]*\nLin Fan, who was lying unconscious, now sits up/);
+  assert.ok(ultimo.indexOf('SCENE STATE') < ultimo.indexOf('Scene to show:'));
+  // Una ficha (sin estado) conserva la regla de siempre.
+  vertexImagen(conImagen);
+  const ficha = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'personaje-c1', prompt: 'Single clean CHARACTER REFERENCE still of Lin Fan.' }), ficha);
+  assert.equal(ficha.statusCode, 200);
+});
+
+test('imagen: si Google tarda demasiado se corta con tiempo de sobra y lo dice; no se reintenta en el servidor', async () => {
+  conCuentaDeServicio();
+  const imagen = require('../api/imagen');
+  const r = vertexImagen(() => { throw Object.assign(new Error('tarde'), { name: 'TimeoutError' }); });
+  const salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'escenario-l1', prompt: 'An empty stone courtyard at dawn.' }), salida);
+  assert.equal(salida.statusCode, 504);
+  assert.equal(salida.valor.tipo, 'tiempo');
+  assert.match(salida.valor.error, /No se reintenta solo, para no pagarla dos veces/);
+  assert.equal(r.llamadasVertex.length, 1);
+});

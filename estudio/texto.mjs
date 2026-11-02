@@ -11,6 +11,13 @@
 // ════════════════════════════════════════════════════════════════
 import { llamar, ErrorRed } from './red.mjs';
 
+// Motivo de un fallo pasajero, dicho con palabras (no «corte pasajero» a secas).
+function motivo(e) {
+  if (e?.tipo === 'red') return 'Se cortó la conexión con el estudio (red del teléfono).';
+  if (/\b503\b/.test(`${e?.message} ${e?.detalleGoogle || ''}`)) return 'Google está saturado ahora mismo (código 503).';
+  return String(e?.message || 'Fallo pasajero.');
+}
+
 export const ESPERAS_CUOTA_TEXTO = [20, 45, 90, 150, 240];
 const ESPERAS_PASAJERAS = [4, 8, 16];
 
@@ -72,7 +79,7 @@ export async function pedirTexto({ sistema, mensaje, temperatura, maxTokens }, {
         continue;
       }
       if (e.reintentable && pasajero < ESPERAS_PASAJERAS.length) {
-        await esperar(ESPERAS_PASAJERAS[pasajero++], control, aviso, 'Hubo un corte pasajero.');
+        await esperar(ESPERAS_PASAJERAS[pasajero++], control, aviso, `${motivo(e)} Se vuelve a intentar.`);
         continue;
       }
       throw e;

@@ -12,10 +12,15 @@
 //    operación de Veo ya arrancada se guarda y se sigue tras recargar.
 //  · El dueño revisa después, mirando el resultado, y regenera lo que salió
 //    mal con el botón del plano.
+//  · Cada imagen lleva el ESTADO de la escena en ese instante (quién está,
+//    dónde, y qué cambió respecto al plano anterior), quién está presente
+//    pero fuera de cuadro, y el plano general de la escena como mapa.
+//  · Las escenas abiertas siguen abiertas al redibujar (antes se cerraban
+//    solas cada vez que terminaba una imagen).
 // ════════════════════════════════════════════════════════════════
 import { proyectoActual, guardar } from './proyectos.mjs';
 import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './medios.mjs';
-import { desglosar, revisar, escenasDelEpisodio, textoEscena } from './desglose.mjs';
+import { desglosar, revisar, escenasDelEpisodio, textoEscena, NOMBRE_ENCUADRE, nombreDe } from './desglose.mjs';
 import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
 import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
 import { crearControl } from './texto.mjs';
@@ -30,10 +35,17 @@ let ocupado = null;
 let ultimoError = null;
 let informe = null;   // último informe del director de arte
 let fila = Promise.resolve();
+let abiertas = null;  // escenas que el dueño tiene abiertas (se conservan al redibujar)
 
 export function montarEscenas(contenedor) {
   raiz = contenedor;
   raiz.addEventListener('click', alPulsar);
+  // «toggle» no burbujea: se escucha en captura.
+  raiz.addEventListener('toggle', evento => {
+    const d = evento.target.closest?.('details.escena-planos');
+    if (!d || evento.target !== d || !abiertas) return;
+    if (d.open) abiertas.add(d.dataset.escena); else abiertas.delete(d.dataset.escena);
+  }, true);
   // Selectores de modelo (plegados): se guardan en el proyecto.
   raiz.addEventListener('change', evento => {
     const campo = evento.target.closest('[name="modeloImagen"], [name="modeloVideo"]');
@@ -89,6 +101,10 @@ function pintarAhora() {
   const fichasQueFaltan = u.personajes.filter(x => !x.referencia).map(x => x.nombre);
   const accion = planos.filter(x => x.tipo === 'accion').length;
   const vertical = d.formulario.formato !== '16:9';
+  // Desgloses hechos antes de las reglas de continuidad (sin «quién está»).
+  const antiguos = escenas.filter(e => e.planos?.length && !Array.isArray(e.presentes)).length;
+  // La primera vez se abre la primera escena; después manda el dueño.
+  if (!abiertas) abiertas = new Set(escenas[0] ? [escenas[0].id] : []);
   raiz.innerHTML = `
   <div class="seccion"><h3>Escenas</h3></div>
   <div class="card">
@@ -97,12 +113,14 @@ function pintarAhora() {
     <p class="nota">${escenas.length} escenas · ${planos.length} planos${planos.length ? ` (${Math.round(100 * accion / planos.length)} % de acción) · ${planos.length - sinImagen} con imagen · ${conVideo} con video` : ''}</p>
     ${enCurso && !ocupado ? `<p class="nota oro">Hay ${enCurso} video(s) que Veo ya estaba haciendo: pulsa «Generar todos los videos» o el botón del plano para seguirlos sin pagar otro.</p>` : ''}
     ${informe ? `<p class="nota">${escapar(informe)}</p>` : ''}
+    ${antiguos ? `<p class="caja-error">${antiguos === escenas.length ? 'El desglose' : `El desglose de ${antiguos} escena(s)`} se hizo antes de las reglas de continuidad (quién está en la escena y dónde). Pulsa «Rehacer todo el desglose» antes de generar más imágenes.</p>` : ''}
     ${caja('general')}
     ${sinDesglose ? `<button type="button" class="btn ancho" data-accion="desglose">${planos.length ? `Desglosar las ${sinDesglose} escenas que faltan` : 'Hacer el desglose de planos'}</button>` : ''}
     ${!sinDesglose && sinImagen ? `<button type="button" class="btn ancho" data-accion="lote">Generar todas las imágenes (${sinImagen})</button>` : ''}
     ${!sinDesglose && sinVideo ? `<button type="button" class="${sinImagen ? 'btn-sec' : 'btn ancho'}" data-accion="lote-videos">Generar todos los videos (${sinVideo})</button>` : ''}
     ${!sinDesglose && !sinImagen && !sinVideo ? `<p class="nota oro">Todas las imágenes y los videos de acción están hechos.</p>` : ''}
     ${planos.length ? `<button type="button" class="btn-sec" data-accion="revisar">Revisar la puesta en escena</button>` : ''}
+    ${planos.length ? `<button type="button" class="btn-sec" data-accion="rehacer-todo">Rehacer todo el desglose</button>` : ''}
     <details class="plegado"><summary>Modelos de imagen y video</summary>
       <label class="campo-linea">Modelo de imagen<select name="modeloImagen">${MODELOS_IMAGEN.map(m => `<option value="${m.valor}"${m.valor === modeloImagen(d) ? ' selected' : ''}>${m.etiqueta}</option>`).join('')}</select></label>
       <label class="campo-linea">Modelo de video<select name="modeloVideo">${MODELOS_VIDEO.map(m => `<option value="${m.valor}"${m.valor === modeloVideo(d) ? ' selected' : ''}>${m.etiqueta}</option>`).join('')}</select></label>
@@ -111,8 +129,9 @@ function pintarAhora() {
   ${escenas.map((e, n) => {
     const lugar = u.escenarios.find(x => x.id === e.escenario)?.nombre || '';
     const seg = Math.round(segundosDe(contarPalabras(textoEscena(e))));
-    return `<details class="card escena-planos"${n === 0 ? ' open' : ''}>
+    return `<details class="card escena-planos" data-escena="${e.id}"${abiertas.has(e.id) ? ' open' : ''}>
       <summary><span class="escena-num">Escena ${n + 1}</span> ${escapar(e.titulo)} <span class="nota">· ${escapar(lugar)} · ≈ ${seg} s${e.planos?.length ? ` · ${e.planos.length} planos` : ''}</span></summary>
+      ${Array.isArray(e.presentes) ? `<p class="nota">En escena desde el principio: ${escapar(e.presentes.map(id => nombreDe(u, id)).join(', ') || 'nadie')}</p>` : ''}
       <div class="lineas-compactas">${e.lineas.map(l => `<p><strong>${escapar(l.tipo === 'sistema' ? 'Sistema' : l.personaje === 'extra' ? (l.nombre || 'Extra') : fichaDe(u, l.personaje).nombre)}:</strong> ${escapar(l.texto)}</p>`).join('')}</div>
       ${caja('e-' + e.id)}
       <div class="planos">${(e.planos || []).map((x, i) => `
@@ -120,7 +139,7 @@ function pintarAhora() {
           <div class="marco ${vertical ? 'vertical' : 'horizontal'}">${x.video ? `<video data-ruta="${escapar(x.video.ruta)}"${x.imagen ? ` data-portada="${escapar(x.imagen.ruta)}"` : ''} controls playsinline preload="metadata"></video>` : x.imagen ? `<img data-ruta="${escapar(x.imagen.ruta)}" alt="Plano ${i + 1}" data-ver="1">` : `<span>Plano ${i + 1}</span>`}</div>
           <div class="plano-datos">
             <span class="etiqueta ${x.tipo === 'accion' ? 'propio' : 'defecto'}">${x.tipo === 'accion' ? 'Acción · 4 s' : 'Cobertura · 1,5–3 s'}</span>
-            <span class="nota">peso ${x.peso}${x.personajes.length ? ' · ' + escapar(x.personajes.map(id => fichaDe(u, id).nombre).join(', ')) : ''}</span>
+            <span class="nota">${x.encuadre ? escapar(NOMBRE_ENCUADRE[x.encuadre]) + ' · ' : ''}peso ${x.peso}${x.personajes.length ? ' · ' + escapar(x.personajes.map(id => nombreDe(u, id)).join(', ')) : ''}${x.entran?.length ? ' · entra ' + escapar(x.entran.map(id => nombreDe(u, id)).join(', ')) : ''}${x.salen?.length ? ' · sale ' + escapar(x.salen.map(id => nombreDe(u, id)).join(', ')) : ''}</span>
             <p class="ancla">«${escapar(x.ancla)}»</p>
             ${x.sistema ? `<p class="linea sistema"><span class="quien">Sistema</span>${escapar(x.sistema)}</p>` : ''}
             ${x.revision ? `<p class="aviso-obsoleta">Director de arte: ${escapar(conPunto(x.revision))}${x.imagenObsoleta ? ' La imagen quedó obsoleta.' : ''}</p>` : ''}
@@ -128,7 +147,7 @@ function pintarAhora() {
             ${x.video && x.videoObsoleto ? `<p class="aviso-obsoleta">El video es de una imagen anterior.</p>` : ''}
             <button type="button" class="${x.imagen && !x.imagenObsoleta ? 'btn-sec' : 'btn ancho'}" data-accion="imagen" data-escena="${e.id}" data-plano="${i}">${x.imagen ? 'Regenerar imagen' : 'Generar imagen'}</button>
             ${x.imagen && !x.imagenObsoleta ? `<button type="button" class="${x.video && !x.videoObsoleto ? 'btn-sec' : 'btn ancho'}" data-accion="video" data-escena="${e.id}" data-plano="${i}">${x.operacion?.nombre ? 'Seguir el video en curso' : x.video ? 'Regenerar video' : 'Generar video'}</button>` : ''}
-            <details class="plegado"><summary>Ver el prompt</summary><p class="corto">${escapar(x.prompt)}</p>${x.movimiento ? `<p class="corto">Movimiento: ${escapar(x.movimiento)}</p>` : ''}</details>
+            <details class="plegado"><summary>Ver el prompt</summary><p class="corto">${escapar(x.prompt)}</p>${x.estado ? `<p class="corto">Estado: ${escapar(x.estado)}</p>` : ''}${x.cambio ? `<p class="corto">Cambio: ${escapar(x.cambio)}</p>` : ''}${x.movimiento ? `<p class="corto">Movimiento: ${escapar(x.movimiento)}</p>` : ''}</details>
           </div>
         </div>`).join('')}</div>
       ${e.planos?.length ? `<button type="button" class="btn-sec" data-accion="redesglose" data-escena="${e.id}">Rehacer el desglose de esta escena</button>` : ''}
@@ -152,10 +171,17 @@ async function imagenPlano(escena, indice, opciones) {
   const falta = personajes.find(x => !x.ruta);
   if (falta) throw new Error(`Falta la ficha de ${falta.nombre}. Genérala en Personajes: sin ella este plano no se genera, para no cambiarle la cara.`);
   const anterior = escena.planos[indice - 1];
+  // El primer plano (general) es el mapa de la escena para los siguientes.
+  const mapa = indice > 0 && escena.planos[0]?.encuadre === 'general' && !escena.planos[0].imagenObsoleta ? escena.planos[0].imagen?.ruta : undefined;
+  const fuera = (plano.presentes || []).filter(id => !plano.personajes.includes(id)).map(id => nombreDe(u, id));
   const cuerpo = {
     proyecto: p.id, clave: 'plano-' + plano.id, prompt: plano.prompt, formato: d.formulario.formato, modelo: modeloImagen(d),
     personajes: personajes.map(x => ({ nombre: x.nombre, ruta: x.ruta })),
     continuidad: anterior?.imagen?.ruta || undefined,
+    situacion: mapa,
+    estado: plano.estado || undefined,
+    cambio: indice > 0 ? plano.cambio || undefined : undefined,
+    fuera,
     escenario: u.escenarios.find(x => x.id === escena.escenario)?.referencia?.ruta || undefined,
     ecchi: esEcchi(d.formulario),
     direccion: direccionDeAspecto(d.formulario),
@@ -210,6 +236,13 @@ async function alPulsar(evento) {
       const r = await desglosar(d, numero, { ...o, alAvanzar: () => pintarEscenas() });
       informe = textoInforme(r);
       return 'Desglose listo.';
+    });
+  }
+  if (accion === 'rehacer-todo') {
+    return trabajar('general', async o => {
+      const r = await desglosar(d, numero, { ...o, rehacerTodo: true, alAvanzar: () => pintarEscenas() });
+      informe = textoInforme(r);
+      return 'Desglose rehecho con las reglas de continuidad.';
     });
   }
   if (accion === 'redesglose') {

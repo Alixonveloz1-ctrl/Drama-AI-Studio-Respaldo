@@ -96,7 +96,7 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 - `estudio/` — módulos del navegador; `index.html` y `entrar/` las páginas.
   - `imagenes.mjs` también guarda el aspecto visual de cada género y subgénero, el casting atractivo y el ecchi visual (`direccionDeAspecto`).
   - `videos.mjs` (prompt de video por bloques literales en orden, negativo como lista, operación guardada y reanudable).
-  - `desglose.mjs` (director de fotografía: planos de acción/cobertura anclados al texto; director de arte: corrige sin borrar), `escenas.mjs` (pestaña Escenas).
+  - `desglose.mjs` (director de fotografía: planos de acción/cobertura anclados al texto, con puesta en escena —quién está desde el principio, quién entra y sale—, encuadre, estado de cada persona presente y qué cambió; primer plano general con todos; todo validado antes de pagar imágenes. Director de arte: corrige sin borrar y vigila apariciones, desapariciones y objetos que se esfuman), `escenas.mjs` (pestaña Escenas; las escenas abiertas siguen abiertas; cada imagen lleva estado, fuera de cuadro y el plano general como mapa).
   - `medios.mjs` (cola de imagen/video: esperas 60/120/180/240/300, tandas que saltan lo hecho), `imagenes.mjs` (prompts de imagen en inglés), `personajes.mjs` (pestaña Personajes).
   - `prompts.mjs` (textos de prompt), `guion.mjs` (ideas, universo, biblia, nota, bloques y su revisión),
     `texto.mjs` (esperas de cuota 20/45/90/150/240, bloqueo sin reintento, Detener), `historia.mjs` (pantalla),

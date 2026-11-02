@@ -214,8 +214,11 @@ function desgloseValido(escena) {
   // Siete planos (si la escena los admite), para que la proporción 70/30 cuente.
   const n = Math.min(D.maximoPlanos(escena), Math.max(D.minimoPlanos(escena), 7));
   const paso = Math.floor((palabras.length - 4) / n);
-  return { escenas: [{ id: escena.id, planos: Array.from({ length: n }, (_, i) => ({
-    tipo: i % 3 === 2 ? 'cobertura' : 'accion', ancla: palabras.slice(i * paso, i * paso + 4).join(' '), personajes: ['c1'], peso: 3,
+  return { escenas: [{ id: escena.id, presentes: ['c1', 'c2'], planos: Array.from({ length: n }, (_, i) => ({
+    tipo: i % 3 === 2 ? 'cobertura' : 'accion', encuadre: i === 0 ? 'general' : 'medio', ancla: palabras.slice(i * paso, i * paso + 4).join(' '),
+    personajes: i === 0 ? ['c1', 'c2'] : ['c1'], entran: [], salen: [], peso: 3,
+    estado: 'Lin Feng kneels on the stone floor of the courtyard; Wang Hu stands over him, two steps away.',
+    cambio: i ? 'Lin Feng lifts his head a little more than in the previous shot.' : '',
     prompt: 'Scene with Lin Feng (short black hair, grey robe): medium shot, side view, kneeling in the stone courtyard at dawn.',
     movimiento: i % 3 !== 2 ? 'Lin Feng slowly raises his head.' : '', sistema: '' })) }] };
 }
@@ -375,4 +378,69 @@ test('ficha: un personaje antiguo sin sexo guardado se reconoce por su aspecto e
   const ficha = I.promptFichaPersonaje({ nombre: 'Mei', edad: 24, aspecto: 'Mujer de pelo largo negro, vestido rojo de seda', appearance: 'long black hair, red silk dress' }, formulario);
   assert.match(ficha, /strikingly beautiful adult woman/);
   assert.match(ficha, /curvy, alluring figure/);
+});
+
+
+test('continuidad de escena: nadie aparece ni desaparece por arte de magia y cada plano dice quién está y qué cambió', () => {
+  const e = escenaDePrueba();
+  const u = universoValido();
+  const bueno = D.validarDesglose(desgloseValido(e), [e], u);
+  assert.deepEqual(bueno.problemas, []);
+  assert.deepEqual(bueno.presentes.e1, ['c1', 'c2']);
+  assert.deepEqual(bueno.resultado.e1[1].presentes, ['c1', 'c2'], 'cada plano sabe quién está, aunque no se vea');
+  const casos = [
+    [j => { j.escenas[0].presentes = ['c1']; }, 'sin estar en la escena'],
+    [j => { j.escenas[0].presentes = ['c1']; j.escenas[0].planos[0].personajes = ['c1']; }, 'habla Wang Hu pero no está'],
+    [j => { j.escenas[0].planos[0].personajes = ['c1']; }, 'deja fuera a Wang Hu'],
+    [j => { j.escenas[0].planos[0].encuadre = 'medio'; }, 'primer plano tiene que ser general'],
+    [j => { j.escenas[0].planos[2].estado = 'Lin Feng kneels on the floor, head down, breathing hard.'; }, 'no dice dónde está Wang Hu'],
+    [j => { j.escenas[0].planos[3].cambio = ''; }, 'no dice en "cambio"'],
+    [j => { j.escenas[0].planos[1].encuadre = 'cualquiera'; }, 'no dice su encuadre'],
+    [j => { j.escenas[0].planos[1].salen = ['c2']; j.escenas[0].planos[3].personajes = ['c1', 'c2']; }, 'sin estar en la escena'],
+  ];
+  for (const [romper, esperado] of casos) {
+    const j = desgloseValido(e);
+    romper(j);
+    const { problemas } = D.validarDesglose(j, [e], u);
+    assert.ok(problemas.some(p => p.includes(esperado)), `se esperaba «${esperado}»: ${problemas.join(' | ')}`);
+  }
+  // Quien entra más tarde: se apunta en el plano en que entra y desde ahí está.
+  const entra = desgloseValido(e);
+  entra.escenas[0].presentes = ['c1'];
+  entra.escenas[0].planos[0] = { ...entra.escenas[0].planos[0], personajes: ['c1'], estado: 'Lin Feng kneels alone on the stone floor of the courtyard.' };
+  entra.escenas[0].planos[1].entran = ['c2'];
+  entra.escenas[0].planos[1].personajes = ['c1', 'c2'];
+  const r = D.validarDesglose(entra, [e], u);
+  assert.deepEqual(r.problemas, []);
+  assert.deepEqual(r.resultado.e1[0].presentes, ['c1']);
+  assert.deepEqual(r.resultado.e1[1].presentes, ['c1', 'c2']);
+});
+
+test('el director de arte puede corregir el estado y el cambio de un plano, y ve quién está en la escena', async () => {
+  const e = escenaDePrueba();
+  const r0 = D.validarDesglose(desgloseValido(e), [e], universoValido());
+  e.planos = r0.resultado.e1.map((p, n) => ({ ...p, id: `e1-${n + 1}` }));
+  e.presentes = r0.presentes.e1;
+  e.planos[1].imagen = { ruta: 'x' };
+  const datos = { formulario, universo: universoValido(), biblia: {} };
+  assert.match(D.promptRevision(datos, [e]).mensaje, /presentes al empezar: Lin Feng, Wang Hu/);
+  respuestas = [texto({ revisadas: ['e1'], correcciones: [{ escena: 'e1', plano: 2, estado: 'Lin Feng kneels on the floor; Wang Hu now stands right behind him, a hand on his shoulder.', motivo: 'Wang Hu desaparecía sin haber salido' }] })];
+  const r = await D.revisar(datos, [e], {});
+  assert.equal(r.correcciones, 1);
+  assert.match(e.planos[1].estado, /Wang Hu now stands right behind him/);
+  assert.equal(e.planos[1].imagenObsoleta, true);
+});
+
+import { pedirMedio } from '../estudio/medios.mjs';
+test('medios: la espera dice el motivo real y un corte por tiempo no se repite solo', async () => {
+  respuestas = [{ estado: 502, cuerpo: { error: 'Google no generó la imagen (código 503).', tipo: 'google', detalleGoogle: '503 — The model is overloaded.' } }, { cuerpo: { ruta: 'r/x.png' } }];
+  const avisos = [];
+  const r = await pedirMedio('/api/imagen', { a: 1 }, { control: crearControl(), aviso: a => avisos.push(a) });
+  assert.equal(r.ruta, 'r/x.png');
+  assert.ok(avisos.some(a => /Google está saturado ahora mismo \(código 503\)\. Se vuelve a intentar\. Reintento en/.test(a)), avisos.join(' | '));
+  assert.ok(!avisos.some(a => /corte pasajero/.test(a)));
+  llamadas = [];
+  respuestas = [{ estado: 504, cuerpo: { error: 'Google tardó más de 47 s', tipo: 'tiempo' } }];
+  await assert.rejects(pedirMedio('/api/imagen', { a: 1 }, { control: crearControl() }), e => e.tipo === 'tiempo');
+  assert.equal(llamadas.length, 1, 'no se paga dos veces');
 });

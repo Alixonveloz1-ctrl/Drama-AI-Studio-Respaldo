@@ -26,7 +26,11 @@ const { ErrorEstudio, clasificar } = require('./_lib/errores');
 const medios = require('./_lib/medios');
 const { limpiarPrompt } = require('./_lib/saneado');
 
-const LIMITE_MS = 52000;
+// Vercel corta la función a los 60 s. A Google se le dan como mucho 47 s
+// desde que llega la petición, para que quede tiempo de GUARDAR la imagen:
+// una imagen que Google ya hizo y no se pudo guardar se paga y se pierde.
+const LIMITE_MS = 47000;
+const FIN_MS = 57000;
 const MAX_REFERENCIAS_BYTES = 14 * 1024 * 1024;
 
 const ESTILO = `ART STYLE (non-negotiable, applies to the ENTIRE image and every character in it): CINEMATIC SEMI-REALISTIC LIVE-ACTION DRAMA FRAME, in the visual language of a high-budget Asian historical or survival drama. Photographic skin with real texture, pores and subsurface detail. Volumetric cinematic lighting with motivated sources: golden-hour sun, cold morning light, firelight, shafts through gaps. Real fabric weave and material response — worn linen, wet cotton, oiled leather, weathered wood, rusted metal. Shallow depth of field with natural lens falloff and gentle bokeh. Colour grading of a graded film: rich but controlled contrast, filmic highlight rolloff, no crushed blacks. Faces are adult, grounded and anatomically correct, with human-sized eyes and readable micro-expression. Full-frame cinematic composition with real perspective and atmospheric depth. STRICTLY FORBIDDEN: 2D anime, cel shading, hand-drawn linework, ink outlines, flat graphic shadow shapes, manga styling, cartoon proportions, chibi, oversized eyes, Disney/Pixar stylisation, illustration, painterly brushwork, plastic or waxy skin, videogame cutscene plastic shading, over-sharpened AI portrait look. The result must look like a frame grabbed from a professionally shot and graded drama series.`;
@@ -35,12 +39,21 @@ const contratoPersonaje = nombre => `CHARACTER REFERENCE above: this is ${nombre
 
 const CONTRATO_CONTINUIDAD = `This reference is the immediately preceding physical state, not a loose mood board. Keep the SAME location identity (architecture, palette, time of day), lighting, character identity, clothing, hairstyle, injuries and object state. Preserve spatial continuity: a character remains at the same place until the CURRENT scene text moves them; an open door stays open; an object already held stays held until the text changes it. A camera cut changes framing, NOT reality. A character may be off-camera only when the CURRENT prompt deliberately frames something else — do not erase, teleport or relocate them just because the angle changed. This new image is a LATER moment, so actions may advance ONLY as described by the current scene text. If the current text explicitly changes state (door opens, character falls, object is picked up), the current text wins.`;
 
+// El primer plano (general) de la escena: el mapa del lugar y de las personas.
+const CONTRATO_SITUACION = 'SCENE MAP above: the opening wide shot of this SAME scene. It fixes the room layout, furniture, props and where each person started. Keep that geography exactly; people and objects move only as the SCENE STATE below says. Do not copy its framing.';
+
 const CONTRATO_ESCENARIO = 'LOCATION REFERENCE above: this is the place where the scene happens. Keep its architecture, materials, palette and layout. Do not copy its framing; compose the shot the scene text asks for.';
 
-function reglas(nombres, formato, ecchi, direccion) {
+function reglas(nombres, formato, ecchi, direccion, conEstado) {
+  // Con estado de escena, la regla 2 ya no dice «a nadie más»: esa frase,
+  // escrita después del contrato de continuidad, le ganaba y borraba a quien
+  // seguía en la habitación (dos reglas que se contradicen: gana la última).
+  const regla2 = conEstado
+    ? '2. Show EVERY character listed as visible in this shot, each exactly where the SCENE STATE puts them. People listed as PRESENT BUT OUT OF FRAME are still in the room: this framing leaves them out, so do not draw them, and keep their part of the room consistent with where they are. Never add anyone who is not in the scene.'
+    : '2. Show EVERY character named in the scene and nobody else beyond those mentioned.';
   return `${nombres.length ? `Character references provided: ${nombres.join(', ')}.\n\n` : ''}MANDATORY RULES:
 1. ABSOLUTELY NO TEXT: no letters, words, numbers, watermarks, captions, subtitles, readable signage, logos or signatures.
-2. Show EVERY character named in the scene and nobody else beyond those mentioned.
+${regla2}
 3. Each character appears EXACTLY ONCE: never duplicate a person in the frame.${nombres.length ? '\n4. Match EACH character to THEIR reference image. Do not swap faces.' : ''}
 5. Draw each character's hair exactly as described: never lengthen, shorten or restyle it.
 6. Faces clear and anatomically correct. No extra limbs, no extra fingers, no melted features.
@@ -99,8 +112,17 @@ function leerRespuesta(res, modelo) {
   return { error: new ErrorEstudio('Google no quiso dibujar esta imagen (la bloqueó o respondió solo con texto). Reintentar igual no sirve: cambia el texto del plano.', { estado: 422, tipo: 'bloqueo', detalle: `blocked ${motivo}${texto ? ' — ' + texto.slice(0, 160) : ''}` }) };
 }
 
+// Registro de una línea por imagen, sin datos privados: si algo falla, en los
+// registros de Vercel se ve cuánto tardó Google y qué respondió.
+function registrar(datos) {
+  try { console.log(JSON.stringify({ api: 'imagen', ...datos })); } catch {}
+}
+
+const texto = (v, max) => (typeof v === 'string' ? limpiarPrompt(v).slice(0, max) : '');
+
 module.exports = puerta({ metodos: ['POST'] }, async (req, { google }) => {
-  const limite = Date.now() + LIMITE_MS;
+  const inicio = Date.now();
+  const limite = inicio + LIMITE_MS;
   const b = req.body || {};
   const { proyecto: id, clave, prompt } = b;
   const formato = b.formato === '16:9' ? '16:9' : '9:16';
@@ -108,44 +130,56 @@ module.exports = puerta({ metodos: ['POST'] }, async (req, { google }) => {
   if (typeof prompt !== 'string' || prompt.trim().length < 10) throw new ErrorEstudio('Falta el texto de la imagen.', { estado: 400, tipo: 'peticion' });
   const destino = medios.rutaMedio(id, clave, 'png');
   const personajes = (Array.isArray(b.personajes) ? b.personajes : []).slice(0, 4);
+  for (const p of personajes) {
+    const nombre = String(p?.nombre || '').trim();
+    if (!nombre || !p?.ruta) throw new ErrorEstudio(`Falta la ficha de referencia de ${nombre || 'un personaje'}. No se generó la imagen para no cambiarle la cara.`, { estado: 409, tipo: 'falta_referencia' });
+  }
   const { cuenta, proyecto, token } = await google();
 
-  // Referencias desde el bucket. Una ficha que falta o no se lee detiene todo.
+  // Referencias desde el bucket, todas a la vez (antes iban una detrás de
+  // otra y se comían segundos del tiempo de Google). Una ficha que falta o
+  // no se lee detiene todo.
   const avisos = [];
-  let presupuesto = MAX_REFERENCIAS_BYTES;
-  const adjuntar = async (ruta, quePara) => {
+  const leerRef = async (ruta, quePara) => {
     const { bytes, tipo } = await medios.leer(token, medios.exigirDelProyecto(id, ruta), quePara);
-    presupuesto -= bytes.length;
-    return { inlineData: { mimeType: /^image\//.test(tipo) ? tipo : 'image/png', data: bytes.toString('base64') } };
+    return { bytes, parte: { inlineData: { mimeType: /^image\//.test(tipo) ? tipo : 'image/png', data: bytes.toString('base64') } } };
   };
   const partes = [{ text: ESTILO }];
   if (b.base) {
     // Edición (variante de un personaje): se parte de la imagen de la madre.
-    partes.push(await adjuntar(b.base, 'la imagen del personaje original'));
+    partes.push((await leerRef(b.base, 'la imagen del personaje original')).parte);
     partes.push({ text: `BASE IMAGE above: this is ${String(b.nombreBase || 'the character')}. EDIT it: ${limpiarPrompt(prompt)}. Keep the SAME person — same face, facial proportions, eye colour, body proportions and distinctive traits — and the same clean reference-sheet composition (one person, full body, neutral background). Change ONLY what the edit asks.` });
   } else {
-    if (b.continuidad) {
-      partes.push(await adjuntar(b.continuidad, 'la imagen del plano anterior'));
-      partes.push({ text: CONTRATO_CONTINUIDAD });
-    }
+    const tareas = [];
+    if (b.continuidad) tareas.push({ ruta: b.continuidad, quePara: 'la imagen del plano anterior', contrato: CONTRATO_CONTINUIDAD });
+    if (b.situacion && b.situacion !== b.continuidad) tareas.push({ ruta: b.situacion, quePara: 'el plano general de la escena', contrato: CONTRATO_SITUACION });
     for (const p of personajes) {
-      const nombre = String(p?.nombre || '').trim().slice(0, 80);
-      if (!nombre || !p?.ruta) throw new ErrorEstudio(`Falta la ficha de referencia de ${nombre || 'un personaje'}. No se generó la imagen para no cambiarle la cara.`, { estado: 409, tipo: 'falta_referencia' });
-      partes.push(await adjuntar(p.ruta, `la ficha de ${nombre}`));
-      partes.push({ text: contratoPersonaje(nombre) });
+      const nombre = String(p.nombre).trim().slice(0, 80);
+      tareas.push({ ruta: p.ruta, quePara: `la ficha de ${nombre}`, contrato: contratoPersonaje(nombre) });
     }
-    if (b.escenario) {
-      if (presupuesto > 4 * 1024 * 1024) {
-        partes.push(await adjuntar(b.escenario, 'la imagen del escenario'));
-        partes.push({ text: CONTRATO_ESCENARIO });
-      } else {
-        avisos.push('No cupo la imagen del escenario junto a las fichas; se generó con las fichas y el texto del lugar.');
-      }
+    const [leidas, lugar] = await Promise.all([
+      Promise.all(tareas.map(t => leerRef(t.ruta, t.quePara))),
+      b.escenario ? leerRef(b.escenario, 'la imagen del escenario') : null,
+    ]);
+    let presupuesto = MAX_REFERENCIAS_BYTES;
+    leidas.forEach((l, i) => { presupuesto -= l.bytes.length; partes.push(l.parte, { text: tareas[i].contrato }); });
+    if (presupuesto < 0) throw new ErrorEstudio('Las imágenes de referencia de este plano pesan demasiado para enviarlas juntas. No se generó; prueba con menos personajes en el plano.', { estado: 413, tipo: 'peticion' });
+    if (lugar) {
+      if (presupuesto - lugar.bytes.length > 0) partes.push(lugar.parte, { text: CONTRATO_ESCENARIO });
+      else avisos.push('No cupo la imagen del escenario junto a las fichas; se generó con las fichas y el texto del lugar.');
     }
-    if (presupuesto < 0) throw new ErrorEstudio('Las fichas de los personajes de este plano pesan demasiado para enviarlas juntas. No se generó; prueba con menos personajes en el plano.', { estado: 413, tipo: 'peticion' });
-    const direccion = typeof b.direccion === 'string' ? limpiarPrompt(b.direccion).slice(0, 2500) : '';
-    partes.push({ text: `${reglas(personajes.map(p => p.nombre), formato, b.ecchi === true, direccion)}\n\nScene to show:\n${limpiarPrompt(prompt)}` });
+    // Estado de la escena en este instante: quién está, dónde, y qué cambió.
+    const estado = texto(b.estado, 1500);
+    const cambio = texto(b.cambio, 800);
+    const fuera = (Array.isArray(b.fuera) ? b.fuera : []).map(n => String(n || '').trim().slice(0, 80)).filter(Boolean).slice(0, 8);
+    const escena = [
+      estado ? `SCENE STATE AT THIS INSTANT (everyone in the scene, visible or not, and the key objects):\n${estado}` : '',
+      fuera.length ? `PRESENT BUT OUT OF FRAME (still in the room; this framing leaves them out): ${fuera.join(', ')}.` : '',
+      cambio ? `WHAT CHANGED SINCE THE PREVIOUS SHOT (show this new moment; do not repeat the previous frame's poses):\n${cambio}` : '',
+    ].filter(Boolean).join('\n\n');
+    partes.push({ text: `${reglas(personajes.map(p => p.nombre), formato, b.ecchi === true, texto(b.direccion, 2500), Boolean(estado))}${escena ? '\n\n' + escena : ''}\n\nScene to show:\n${limpiarPrompt(prompt)}` });
   }
+  const msLectura = Date.now() - inicio;
 
   // Modelo global: una sola llamada. Regional: rotación ante cuota.
   const ubicacion = ubicacionImagen(modelo);
@@ -153,15 +187,22 @@ module.exports = puerta({ metodos: ['POST'] }, async (req, { google }) => {
   let ultimo;
   for (const region of regiones) {
     if (ultimo && limite - Date.now() < 15000) break;
+    const t0 = Date.now();
     const res = await pedirAVertex(urlVertex(proyecto, region, modelo, 'generateContent'), partes, proyecto, token, formato, limite);
-    if (res.tiempo) throw new ErrorEstudio('Google tardó más de 50 s en dibujar esta imagen y se cortó. Vuelve a intentarlo en un momento.', { estado: 504, tipo: 'tiempo' });
+    const msGoogle = Date.now() - t0;
+    if (res.tiempo) {
+      registrar({ clave, modelo, region, msLectura, msGoogle, resultado: 'tiempo' });
+      throw new ErrorEstudio(`Google tardó más de ${Math.round((limite - inicio) / 1000)} s en dibujar esta imagen y hubo que cortar para no pasar el límite del servidor. No se reintenta solo, para no pagarla dos veces: vuelve a pulsar cuando quieras.`, { estado: 504, tipo: 'tiempo' });
+    }
     const leido = leerRespuesta(res, modelo);
     if (leido.imagen) {
       const tipo = /jpe?g/i.test(leido.tipo) ? 'image/jpeg' : 'image/png';
-      const guardado = await medios.guardar(token, destino, leido.imagen, tipo);
+      const guardado = await medios.guardar(token, destino, leido.imagen, tipo, { espera: Math.max(3000, inicio + FIN_MS - Date.now()) });
+      registrar({ clave, modelo, region, msLectura, msGoogle, msTotal: Date.now() - inicio, resultado: 'ok' });
       return { ruta: destino, url: firmarUrl(cuenta, cfg.bucket, destino), modelo, region, generacion: guardado.generacion, avisos };
     }
     ultimo = leido.error;
+    registrar({ clave, modelo, region, msLectura, msGoogle, resultado: leido.error?.tipo, estado: res.estado, detalle: String(leido.error?.detalle || '').slice(0, 200) });
     if (!(leido.cuota || leido.rotable)) break;   // un bloqueo o un "sin acceso" es igual en todas las regiones
   }
   throw ultimo;

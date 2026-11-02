@@ -42,10 +42,10 @@ async function leer(token, ruta, quePara) {
   return { bytes: Buffer.from(await r.arrayBuffer()), tipo: r.headers.get('content-type') || 'application/octet-stream' };
 }
 
-async function guardar(token, ruta, bytes, tipo) {
+async function guardar(token, ruta, bytes, tipo, { espera = 20000 } = {}) {
   const q = new URLSearchParams({ uploadType: 'media', name: ruta });
   const r = await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(cfg.bucket)}/o?${q}`, {
-    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': tipo }, body: bytes, signal: AbortSignal.timeout(20000),
+    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': tipo }, body: bytes, signal: AbortSignal.timeout(espera),
   });
   if (!r.ok) throw new ErrorEstudio(`No se pudo guardar el archivo en el bucket (Google respondió ${r.status}).`, { estado: 502, tipo: 'google' });
   const d = await r.json().catch(() => ({}));

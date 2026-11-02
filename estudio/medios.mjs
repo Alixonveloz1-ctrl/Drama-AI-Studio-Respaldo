@@ -8,6 +8,10 @@
 //    bloquear y gasta cuota de verdad).
 //  · Un elemento que falla no tumba la tanda: se cuenta y se sigue.
 //  · «Detener» corta de verdad, también en mitad de una espera de minutos.
+//  · Cada espera dice el MOTIVO real (antes decía «corte pasajero» para
+//    todo y no se sabía qué pasaba).
+//  · Si Google tardó demasiado y hubo que cortar, NO se reintenta solo:
+//    Google pudo haber hecho (y cobrado) la imagen; se dice y se deja decidir.
 // ════════════════════════════════════════════════════════════════
 import { llamar, explicar } from './red.mjs';
 import { esBloqueo, esCuota, errorDetenido } from './texto.mjs';
@@ -25,6 +29,15 @@ async function esperar(segundos, control, aviso, motivo) {
   }
 }
 
+// El motivo de un fallo pasajero en pocas palabras, para la cuenta atrás.
+export function motivoCorto(e) {
+  const google = String(e?.detalleGoogle || '').match(/^\d{3}/)?.[0];
+  if (e?.tipo === 'red') return 'Se cortó la conexión con el estudio (red del teléfono).';
+  if (/\b503\b/.test(`${e?.message} ${e?.detalleGoogle || ''}`)) return 'Google está saturado ahora mismo (código 503).';
+  if (/\b500\b/.test(`${e?.message} ${e?.detalleGoogle || ''}`)) return 'Google tuvo un fallo interno (código 500).';
+  return `${String(e?.message || 'Fallo pasajero.').replace(/\s+$/, '')}${google ? ` (Google: ${google})` : ''}`;
+}
+
 // Una petición de medios con la política de esperas de imagen y video.
 export async function pedirMedio(ruta, cuerpo, { control, aviso } = {}) {
   let cuota = 0, pasajero = 0;
@@ -39,8 +52,9 @@ export async function pedirMedio(ruta, cuerpo, { control, aviso } = {}) {
         await esperar(ESPERAS_CUOTA_MEDIOS[cuota++], control, aviso, 'Google pide esperar por el límite por minuto de tu cuenta.');
         continue;
       }
-      if ((e.reintentable || e.tipo === 'tiempo') && pasajero < 2) {
-        await esperar(pasajero++ ? 15 : 5, control, aviso, 'Hubo un corte pasajero.');
+      if (e.tipo === 'tiempo') throw e;
+      if (e.reintentable && pasajero < 2) {
+        await esperar(pasajero++ ? 15 : 5, control, aviso, `${motivoCorto(e)} Se vuelve a intentar.`);
         continue;
       }
       throw e;
