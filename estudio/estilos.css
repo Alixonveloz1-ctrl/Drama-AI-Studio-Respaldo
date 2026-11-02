@@ -243,3 +243,70 @@ details.plegado summary { cursor: pointer; color: var(--oro); font-size: 14px; p
   .btn, .toast { transition: none; }
   .spinner { animation-duration: 2s; }
 }
+
+/* ── Formulario de la Historia ── */
+.formulario .campo { display: block; margin: 0 0 16px; font-size: 13px; color: var(--oro); letter-spacing: 0.4px; font-weight: 600; }
+.formulario .campo .nota { font-weight: 400; letter-spacing: 0; }
+select, textarea, input[type="text"] {
+  display: block; width: 100%; margin-top: 7px;
+  background: rgba(0,0,0,0.35); color: var(--texto);
+  border: 1px solid var(--linea); border-radius: var(--radio-sm);
+  font-family: var(--sans); font-size: 16px; padding: 12px 13px;
+  -webkit-appearance: none; appearance: none;
+}
+select {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'><path fill='%23e8b85a' d='M2 4l4 4 4-4z'/></svg>");
+  background-repeat: no-repeat; background-position: right 13px center; padding-right: 34px;
+}
+textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
+select:focus, textarea:focus { outline: none; border-color: var(--oro); box-shadow: 0 0 0 3px rgba(232,184,90,0.15); }
+.chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
+.chip { display: flex; align-items: center; gap: 6px; padding: 10px 10px; border-radius: 12px; cursor: pointer;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--linea); color: var(--texto); font-size: 13px; font-weight: 500; letter-spacing: 0; user-select: none; }
+.chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chip.activo { background: rgba(232,184,90,0.14); border-color: var(--oro); color: var(--oro-claro); }
+.chip.apagado { opacity: 0.35; text-decoration: line-through; cursor: not-allowed; }
+details.mas { margin-top: 10px; }
+details.mas summary, details.plegado-ideas summary { cursor: pointer; color: var(--oro); font-size: 14px; font-weight: 500; padding: 6px 0; }
+.resumen-eleccion { margin: -6px 2px 16px; }
+
+/* ── Progreso y errores ── */
+.progreso-caja { background: rgba(232,184,90,0.06); border: 1px solid var(--filo); border-radius: var(--radio-sm); padding: 12px 14px; margin: 4px 0 14px; }
+.progreso-linea { display: flex; gap: 10px; align-items: center; font-size: 14px; line-height: 1.5; color: var(--texto); }
+.barra { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; margin-top: 10px; }
+.barra > div { height: 100%; background: linear-gradient(90deg, var(--oro-oscuro), var(--oro-claro)); transition: width 0.4s; }
+.progreso-caja .btn-sec { margin-top: 10px; }
+.caja-error { background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.4); border-radius: var(--radio-sm);
+  padding: 12px 14px; margin: 4px 0 14px; font-size: 14px; line-height: 1.55; color: #ffd1d1; overflow-wrap: anywhere; }
+
+/* ── Ideas y universo ── */
+.idea.elegida { border-color: var(--oro); }
+.idea h2 { font-size: 20px; }
+.universo h4, .guion h4, .plegado h4 { margin: 14px 0 4px; font-size: 11px; color: var(--oro); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+.universo .gancho { font-family: var(--serifa); font-style: italic; color: var(--oro-claro); font-size: 16px; }
+.universo ul, .universo ol, .plegado ul, .plegado ol { margin: 4px 0 0; padding-left: 20px; font-size: 14px; line-height: 1.6; color: #d6d1c7; }
+ul.personajes { list-style: none; padding: 0; }
+ul.personajes li { padding: 9px 0; border-top: 1px solid var(--linea); }
+ul.personajes li:first-child { border-top: 0; }
+details.plegado { margin-top: 16px; border-top: 1px solid var(--linea); padding-top: 8px; }
+details.plegado summary { cursor: pointer; color: var(--oro); font-size: 14px; font-weight: 500; padding: 6px 0; }
+
+/* ── Guion ── */
+.escena { border-top: 1px solid var(--linea); padding: 16px 0 6px; }
+.escena-cabeza { display: flex; justify-content: space-between; gap: 10px; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; }
+.escena-num { color: var(--oro); font-weight: 600; }
+.escena-lugar { color: var(--tenue); text-align: right; }
+.escena h4 { font-family: var(--serifa); font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--texto); margin: 6px 0 4px; }
+.escena .accion { font-size: 13px; color: var(--tenue); font-style: italic; margin: 0 0 10px; }
+.linea { font-size: 15px; line-height: 1.55; margin: 0 0 9px; color: #e9e4da; }
+.linea .quien { display: block; font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--oro); font-weight: 600; margin-bottom: 1px; }
+.linea.pensamiento { font-style: italic; color: #cfc8bb; padding-left: 10px; border-left: 2px solid var(--filo); }
+.linea.sistema { background: rgba(80,160,255,0.08); border: 1px solid rgba(120,180,255,0.35); border-radius: 10px; padding: 8px 11px; color: #d8e8ff; }
+.linea.sistema .quien { color: #8fc2ff; }
+
+/* ── Hoja de proyectos ── */
+.fila-proyecto { display: block; width: 100%; text-align: left; background: rgba(255,255,255,0.03); border: 1px solid var(--linea);
+  border-radius: var(--radio-sm); padding: 13px 14px; margin-bottom: 9px; color: var(--texto); font-family: var(--sans); cursor: pointer; }
+.fila-proyecto .nombre { display: block; font-family: var(--serifa); font-weight: 700; font-size: 16px; margin-bottom: 3px; }
+.fila-proyecto.abierto { border-color: var(--oro); }
+.card > details.plegado:first-child { margin-top: 0; border-top: 0; padding-top: 0; }

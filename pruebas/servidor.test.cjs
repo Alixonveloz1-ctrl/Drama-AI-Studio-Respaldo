@@ -310,3 +310,139 @@ test('salud: sin variables lo dice con palabras y no se cae', async () => {
   assert.match(salida.valor.cuentaServicio.error, /GCP_SERVICE_ACCOUNT/);
   assert.match(salida.valor.bucket.error, /GCS_OUTPUT_BUCKET/);
 });
+
+// ─── Texto ───
+function conCuentaDeServicio() {
+  process.env.GCP_SERVICE_ACCOUNT = JSON.stringify({ project_id: 'proyecto-drama', client_email: 'drama-studio@proyecto-drama.iam.gserviceaccount.com', private_key: claveServicio });
+  process.env.GCS_OUTPUT_BUCKET = 'bucket-drama';
+}
+const conSesion = (extra = {}) => peticion({ method: 'POST', url: '/api/texto', headers: { cookie: acceso.COOKIE + '=' + token() }, ...extra });
+
+test('texto: endpoint global, pensamiento descartado, límites amplios y filtros configurables en OFF', async () => {
+  conCuentaDeServicio();
+  const texto = require('../api/texto');
+  let enviado, urlVertex;
+  google_responde = async (url, opciones) => {
+    if (url === 'https://oauth2.googleapis.com/token') return new Response(JSON.stringify({ access_token: 'ya29.servicio', expires_in: 3600 }));
+    urlVertex = url; enviado = JSON.parse(opciones.body);
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ thought: true, text: 'pensando…' }, { text: '{"ok":true}' }] } }] }));
+  };
+  const salida = respuesta();
+  await texto(conSesion({ body: { sistema: 's', mensaje: 'hola' } }), salida);
+  assert.equal(salida.statusCode, 200);
+  assert.equal(salida.valor.texto, '{"ok":true}');
+  assert.match(urlVertex, /^https:\/\/aiplatform\.googleapis\.com\/v1\/projects\/proyecto-drama\/locations\/global\/publishers\/google\/models\/gemini-3\.1-pro-preview:generateContent$/);
+  assert.equal(enviado.generationConfig.thinkingConfig.thinkingLevel, 'LOW');
+  assert.ok(enviado.generationConfig.maxOutputTokens >= 4096, 'el pensamiento gasta del mismo límite');
+  assert.equal(enviado.generationConfig.responseMimeType, 'application/json');
+  assert.ok(enviado.safetySettings.every(s => s.threshold === 'OFF'));
+});
+
+test('texto: cuota, bloqueo y falta de espacio se explican con su tipo', async () => {
+  conCuentaDeServicio();
+  const texto = require('../api/texto');
+  const casos = [
+    [new Response(JSON.stringify({ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded' } }), { status: 429 }), 429, 'cuota'],
+    [new Response(JSON.stringify({ candidates: [{ finishReason: 'SAFETY' }] })), 422, 'bloqueo'],
+    [new Response(JSON.stringify({ promptFeedback: { blockReason: 'PROHIBITED_CONTENT' } })), 422, 'bloqueo'],
+    [new Response(JSON.stringify({ candidates: [{ finishReason: 'MAX_TOKENS' }] })), 502, 'tiempo'],
+    [new Response(JSON.stringify({ error: { code: 404, message: 'Publisher model not found' } }), { status: 404 }), 502, 'google'],
+  ];
+  for (const [respuestaGoogle, estado, tipo] of casos) {
+    google_responde = async url => url === 'https://oauth2.googleapis.com/token'
+      ? new Response(JSON.stringify({ access_token: 'ya29.servicio', expires_in: 3600 })) : respuestaGoogle;
+    const salida = respuesta();
+    await texto(conSesion({ body: { mensaje: 'hola' } }), salida);
+    assert.equal(salida.statusCode, estado, tipo);
+    assert.equal(salida.valor.tipo, tipo);
+    assert.ok(salida.valor.error.length > 10);
+  }
+});
+
+// ─── Proyectos ───
+function bucketFalso() {
+  const objetos = new Map(); let generacion = 100;
+  const respuestaJson = (v, status = 200) => new Response(JSON.stringify(v), { status });
+  google_responde = async (url, opciones = {}) => {
+    if (url === 'https://oauth2.googleapis.com/token') return respuestaJson({ access_token: 'ya29.servicio', expires_in: 3600 });
+    const u = new URL(url);
+    if (u.pathname.startsWith('/upload/')) {
+      const nombre = u.searchParams.get('name'), condicion = u.searchParams.get('ifGenerationMatch');
+      const actual = objetos.get(nombre);
+      if (condicion !== null && String(actual?.generacion || '0') !== condicion) return respuestaJson({ error: { code: 412 } }, 412);
+      const g = String(++generacion);
+      objetos.set(nombre, { cuerpo: opciones.body, generacion: g });
+      return respuestaJson({ generation: g });
+    }
+    const m = /\/storage\/v1\/b\/bucket-drama\/o(?:\/([^?]+))?/.exec(u.pathname);
+    if (!m) throw new Error('inesperado ' + url);
+    if (!m[1]) {
+      const prefijo = u.searchParams.get('prefix');
+      return respuestaJson({ items: [...objetos.keys()].filter(n => n.startsWith(prefijo)).map(name => ({ name })) });
+    }
+    const obj = objetos.get(decodeURIComponent(m[1]));
+    if (!obj) return respuestaJson({ error: { code: 404 } }, 404);
+    if (u.searchParams.get('alt') === 'media') return new Response(obj.cuerpo);
+    return respuestaJson({ generation: obj.generacion });
+  };
+  return objetos;
+}
+const proyectosReq = (opciones = {}) => peticion({ url: '/api/proyectos', headers: { cookie: acceso.COOKIE + '=' + token() }, ...opciones });
+
+test('proyectos: crear, leer con su versión, listar y conservar la versión anterior', async () => {
+  conCuentaDeServicio();
+  const objetos = bucketFalso();
+  const proyectos = require('../api/proyectos');
+  const id = 'pabc12345xyz';
+  const crear = respuesta();
+  await proyectos(proyectosReq({ method: 'POST', body: { id, datos: { formulario: { genero: 'naufragio' } }, nombre: '', generacionBase: '0' } }), crear);
+  assert.equal(crear.statusCode, 200);
+  assert.equal(crear.valor.nombre, 'Drama sin título');
+  assert.ok(objetos.has('drama-studio/proyectos/pabc12345xyz/proyecto.json'), 'todo bajo la carpeta del estudio');
+  const leer = respuesta();
+  await proyectos(proyectosReq({ url: '/api/proyectos?id=' + id }), leer);
+  assert.equal(leer.statusCode, 200);
+  assert.equal(leer.valor.generacion, crear.valor.generacion);
+  const segundo = respuesta();
+  await proyectos(proyectosReq({ method: 'POST', body: { id, datos: { universo: { titulo: 'La Isla' } }, nombre: 'La Isla', generacionBase: crear.valor.generacion } }), segundo);
+  assert.equal(segundo.statusCode, 200);
+  assert.ok([...objetos.keys()].some(n => n.includes('/historial/')), 'la versión sustituida se guarda en el historial');
+  const lista = respuesta();
+  await proyectos(proyectosReq({ url: '/api/proyectos' }), lista);
+  assert.deepEqual(lista.valor.proyectos.map(p => p.nombre), ['La Isla']);
+});
+
+test('proyectos: una versión vieja no pisa la nueva y un reintento de creación no duplica', async () => {
+  conCuentaDeServicio();
+  bucketFalso();
+  const proyectos = require('../api/proyectos');
+  const id = 'pconflicto001';
+  const a = respuesta();
+  await proyectos(proyectosReq({ method: 'POST', body: { id, datos: { a: 1 }, generacionBase: '0' } }), a);
+  const repetido = respuesta();
+  await proyectos(proyectosReq({ method: 'POST', body: { id, datos: { a: 2 }, generacionBase: '0' } }), repetido);
+  assert.equal(repetido.statusCode, 409);
+  assert.equal(repetido.valor.tipo, 'conflicto');
+  const sinVersion = respuesta();
+  await proyectos(proyectosReq({ method: 'POST', body: { id, datos: { a: 3 } } }), sinVersion);
+  assert.equal(sinVersion.statusCode, 400);
+});
+
+test('proyectos: una lectura fallida es un error, nunca un proyecto vacío', async () => {
+  conCuentaDeServicio();
+  google_responde = async url => url === 'https://oauth2.googleapis.com/token'
+    ? new Response(JSON.stringify({ access_token: 'ya29.servicio', expires_in: 3600 }))
+    : new Response('{"error":{"code":503}}', { status: 503 });
+  const proyectos = require('../api/proyectos');
+  const leer = respuesta();
+  await proyectos(proyectosReq({ url: '/api/proyectos?id=pfalla0001' }), leer);
+  assert.equal(leer.statusCode, 502);
+  assert.match(leer.valor.error, /No se supone vacío/);
+  const lista = respuesta();
+  await proyectos(proyectosReq({ url: '/api/proyectos' }), lista);
+  assert.equal(lista.statusCode, 502);
+  assert.match(lista.valor.error, /No se supone vacía/);
+  const malo = respuesta();
+  await proyectos(proyectosReq({ url: '/api/proyectos?id=../../otro' }), malo);
+  assert.equal(malo.statusCode, 400);
+});

@@ -70,8 +70,8 @@ export const SUBGENEROS = [
 ];
 
 export const FORMATOS = [
-  { valor: '9:16', etiqueta: '9:16 vertical — TikTok, Reels, Shorts y apps de microdrama' },
-  { valor: '16:9', etiqueta: '16:9 horizontal — YouTube normal' },
+  { valor: '9:16', etiqueta: '9:16 vertical (TikTok, Reels, microdrama)' },
+  { valor: '16:9', etiqueta: '16:9 horizontal (YouTube)' },
 ];
 
 // Reglas heredadas del estudio de anime que siguen vigentes.

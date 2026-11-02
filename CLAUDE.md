@@ -64,8 +64,8 @@ Mandan sobre la especificación donde la contradigan:
 
 Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seguir.
 
-1. Esqueleto, instalador, puerta, acceso privado y pantalla de salud — **hecha**.
-2. Historia: formulario con el catálogo completo, tres ideas breves, universo y guion por bloques.
+1. Esqueleto, instalador, puerta, acceso privado y pantalla de salud — **hecha y probada por el dueño**.
+2. Historia: formulario con el catálogo completo, tres ideas breves, universo y guion por bloques — **hecha; falta que el dueño pruebe un guion de 3 minutos**.
 3. Personajes, escenarios y sus referencias.
 4. Escenas e imágenes: botón por plano, botón de lote y la cola con el manejo de cuotas.
 5. Videos: arranque, consulta y audio nativo sin voces.
@@ -81,7 +81,12 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 - `api/_lib/google.js` — credenciales y todos los modelos/regiones por variable de entorno.
 - `api/_lib/acceso.js` — inicio de sesión de Google (Firebase) + `STUDIO_ALLOWED_EMAILS`.
 - `api/_lib/errores.js` — bloqueo antes que cuota; explicaciones en español.
+- `api/texto.js` — único punto de texto (Gemini global, thinkingLevel LOW, corte a 50 s → «hazlo más pequeño»).
+- `api/proyectos.js` + `api/_lib/almacen.js` — proyectos en el bucket con versión (ifGenerationMatch), historial y 404 real.
 - `estudio/` — módulos del navegador; `index.html` y `entrar/` las páginas.
+  - `prompts.mjs` (textos de prompt), `guion.mjs` (ideas, universo, biblia, nota, bloques y su revisión),
+    `texto.mjs` (esperas de cuota 20/45/90/150/240, bloqueo sin reintento, Detener), `historia.mjs` (pantalla),
+    `proyectos.mjs` (proyecto abierto y guardado en fila), `catalogo.mjs` (géneros, subgéneros, públicos).
 - `comun/cors-bucket.json` — la única lista de CORS del bucket (servidor e instalador).
 - `instalador/` + `c` — instalador de Cloud Shell (idempotente, todo por número).
 - `pruebas/` — `node --test pruebas/*.test.*` y `python3 -m unittest discover -s pruebas -p 'test_*.py'`.
