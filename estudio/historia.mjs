@@ -239,7 +239,8 @@ function htmlGuion(d) {
     ${cajaProgreso('guion')}
     ${accion}
     ${escenasHtml}
-    ${ep?.estado === 'completo' ? `<button type="button" class="btn-sec" data-accion="rehacer">Rehacer el guion</button>` : ''}
+    ${ep?.estado === 'completo' ? `<button type="button" class="btn ancho continuar" data-accion="continuar" data-libre="">Continuar: personajes y escenarios</button>
+      <button type="button" class="btn-sec" data-accion="rehacer">Rehacer el guion</button>` : ''}
   </div>`;
 }
 
@@ -255,6 +256,7 @@ async function alPulsar(evento) {
   const accion = boton.dataset.accion;
   if (accion === 'detener') { ocupado?.control.detener(); return; }
   if (ocupado) return;
+  if (accion === 'continuar') { document.dispatchEvent(new CustomEvent('ir-a', { detail: 'personajes' })); return; }
   if (accion === 'ideas') return trabajar('formulario', 'Escribiendo tres ideas', accionIdeas);
   if (accion === 'elegir') return trabajar('ideas', 'Desarrollando el universo', o => accionElegir(boton.dataset.id, o));
   if (accion === 'biblia') return trabajar('biblia', 'El director escribe la biblia de la serie', accionBiblia);

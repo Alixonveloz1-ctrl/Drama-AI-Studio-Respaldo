@@ -310,3 +310,30 @@ details.plegado summary { cursor: pointer; color: var(--oro); font-size: 14px; f
 .fila-proyecto .nombre { display: block; font-family: var(--serifa); font-weight: 700; font-size: 16px; margin-bottom: 3px; }
 .fila-proyecto.abierto { border-color: var(--oro); }
 .card > details.plegado:first-child { margin-top: 0; border-top: 0; padding-top: 0; }
+
+/* ── Fichas e imágenes ── */
+.campo-linea { display: block; font-size: 13px; color: var(--oro); font-weight: 600; margin-bottom: 10px; }
+.ficha-fila { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 12px; }
+.ficha-datos { min-width: 0; flex: 1; }
+.ficha-datos h2 { font-size: 19px; margin-bottom: 4px; }
+.ficha-datos h4 { margin: 0 0 4px; font-family: var(--serifa); font-size: 15px; color: var(--texto); }
+.corto { font-size: 13px !important; line-height: 1.5 !important; color: var(--tenue) !important; }
+.marco { position: relative; border-radius: 12px; overflow: hidden; background: #0c0d13; border: 1px solid var(--linea); flex-shrink: 0; }
+.marco img { display: block; width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+.marco.vertical { width: 112px; aspect-ratio: 9 / 16; }
+.marco.vertical.mini { width: 72px; }
+.marco.vertical.ancho { width: 100%; max-width: 260px; margin: 0 auto 12px; }
+.marco.horizontal { width: 100%; aspect-ratio: 16 / 9; margin-bottom: 12px; }
+.marco.vacio { display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px; }
+.marco.vacio span { font-size: 11px; color: var(--muy-tenue); }
+.marco[data-error]::after { content: attr(data-error); position: absolute; inset: auto 0 0 0; background: rgba(0,0,0,0.75); color: #ffd1d1; font-size: 10px; padding: 4px; }
+.variante { border-top: 1px solid var(--linea); margin-top: 14px; padding-top: 12px; }
+.aviso-obsoleta { font-size: 12px; color: var(--aviso); margin: 4px 0 0; }
+details.nueva-variante { margin-top: 14px; }
+details.nueva-variante summary { cursor: pointer; color: var(--oro); font-size: 14px; padding: 4px 0; }
+.btn.continuar { margin-top: 14px; }
+.visor { position: fixed; inset: 0; z-index: 400; background: rgba(0,0,0,0.94); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: calc(16px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom)); }
+.visor img { max-width: 100%; max-height: 85vh; object-fit: contain; border-radius: 8px; }
+.visor p { color: var(--tenue); font-size: 13px; margin: 10px 0 0; text-align: center; }
+.visor-cerrar { position: absolute; top: calc(12px + env(safe-area-inset-top)); right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.15); color: #fff; font-size: 16px; }

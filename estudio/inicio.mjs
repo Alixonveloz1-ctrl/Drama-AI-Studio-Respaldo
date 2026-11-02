@@ -8,6 +8,7 @@ import { abrirApis, pedirSalud, resumen } from './salud.mjs';
 import { abrirHoja, cerrarHoja, avisar, escapar } from './interfaz.mjs';
 import { listar, ultimoAbierto, recordarAbierto, proyectoActual } from './proyectos.mjs';
 import { montarHistoria, abrirProyecto, nuevoDrama, irAlFormulario } from './historia.mjs';
+import { montarPersonajes, pintarPersonajes } from './personajes.mjs';
 import { explicar } from './red.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -26,6 +27,8 @@ function irA(panel) {
   document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + panel));
   try { localStorage.setItem('drama.panel', panel); } catch {}
   window.scrollTo({ top: 0 });
+  // Cada área se pinta al mostrarla, con el proyecto abierto en ese momento.
+  if (panel === 'personajes') pintarPersonajes();
 }
 
 const fecha = ms => ms ? new Date(ms).toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
@@ -77,6 +80,7 @@ function cablear() {
     abrirApis().then(s => ponerPunto(resumen(s))).catch(e => { ponerPunto('mal'); if (e.status === 401) mostrarErrorSesion(e); });
   });
   $('#btnProyectos').addEventListener('click', abrirProyectos);
+  document.addEventListener('ir-a', evento => irA(evento.detail));
   $('#btnPortada').addEventListener('click', () => {
     if (proyectoActual()?.datos?.ideas?.length) nuevoDrama();
     else irAlFormulario();
@@ -88,8 +92,8 @@ async function montar() {
   let panel = 'historia';
   try { panel = localStorage.getItem('drama.panel') || panel; } catch {}
   if (!document.getElementById('panel-' + panel)) panel = 'historia';
-  irA(panel);
   montarHistoria($('#historia'));
+  montarPersonajes($('#personajes'));
   // Se vuelve a abrir el último proyecto leyéndolo del bucket (no del teléfono).
   const ultimo = ultimoAbierto();
   if (ultimo) {
@@ -100,6 +104,7 @@ async function montar() {
       avisar('No se pudo abrir tu último proyecto: ' + explicar(e), 'error');
     }
   }
+  irA(panel);
   // La pantalla de "comprobando" se quita cuando la interfaz ya está dibujada.
   $('#comprobando').hidden = true;
   $('#app').hidden = false;

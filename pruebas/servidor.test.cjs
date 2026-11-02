@@ -446,3 +446,86 @@ test('proyectos: una lectura fallida es un error, nunca un proyecto vacío', asy
   await proyectos(proyectosReq({ url: '/api/proyectos?id=../../otro' }), malo);
   assert.equal(malo.statusCode, 400);
 });
+
+// ─── Imagen ───
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+function vertexImagen(respuestaVertex) {
+  const guardados = {}, llamadasVertex = [];
+  google_responde = async (url, opciones = {}) => {
+    if (url === 'https://oauth2.googleapis.com/token') return new Response(JSON.stringify({ access_token: 'ya29.servicio', expires_in: 3600 }));
+    if (url.includes('aiplatform.googleapis.com')) { llamadasVertex.push({ url, cuerpo: JSON.parse(opciones.body) }); return respuestaVertex(); }
+    if (url.includes('/upload/storage/v1/')) { guardados[new URL(url).searchParams.get('name')] = opciones.body; return new Response(JSON.stringify({ generation: '7' })); }
+    if (url.includes('alt=media')) {
+      if (url.includes('falta')) return new Response('{}', { status: 404 });
+      return new Response(PNG, { headers: { 'content-type': 'image/png' } });
+    }
+    throw new Error('inesperado ' + url);
+  };
+  return { guardados, llamadasVertex };
+}
+const conImagen = () => new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ inlineData: { mimeType: 'image/png', data: PNG.toString('base64') } }] } }] }));
+const imagenReq = body => peticion({ method: 'POST', url: '/api/imagen', headers: { cookie: acceso.COOKIE + '=' + token() }, body });
+const base = 'drama-studio/proyectos/pimagen0001/medios/';
+
+test('imagen: contrato de estilo primero, ficha con su contrato, endpoint global y guardado en el bucket', async () => {
+  conCuentaDeServicio();
+  const { guardados, llamadasVertex } = vertexImagen(conImagen);
+  const imagen = require('../api/imagen');
+  const salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'plano-e1-1', prompt: 'Lin Feng kneels in the courtyard while Wang Hu shouts.', formato: '9:16',
+    personajes: [{ nombre: 'Lin Feng', ruta: base + 'personaje-c1.png' }], continuidad: base + 'plano-e1-0.png', escenario: base + 'escenario-l1.png' }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  assert.equal(salida.valor.ruta, base + 'plano-e1-1.png');
+  assert.match(salida.valor.url, /X-Goog-Signature=/);
+  assert.ok(guardados[base + 'plano-e1-1.png'], 'se guardó en el bucket desde el servidor');
+  const { url, cuerpo } = llamadasVertex[0];
+  assert.match(url, /\/locations\/global\/publishers\/google\/models\/gemini-3\.1-flash-image:generateContent$/);
+  const partes = cuerpo.contents[0].parts;
+  assert.match(partes[0].text, /^ART STYLE \(non-negotiable.*CINEMATIC SEMI-REALISTIC LIVE-ACTION DRAMA FRAME/);
+  assert.match(partes[0].text, /professionally shot and graded drama series\.$/);
+  assert.ok(partes[1].inlineData, 'continuidad');
+  assert.match(partes[2].text, /^This reference is the immediately preceding physical state/);
+  assert.ok(partes[3].inlineData, 'ficha');
+  assert.match(partes[4].text, /^CHARACTER REFERENCE above: this is Lin Feng\. Use it ONLY as the identity anchor/);
+  assert.match(partes.at(-1).text, /ABSOLUTELY NO TEXT[\s\S]*Scene to show:\nLin Feng kneels/);
+  assert.equal(cuerpo.generationConfig.imageConfig.aspectRatio, '9:16');
+});
+
+test('imagen: sin ficha no se genera; bloqueo, solo-texto y cuota se distinguen; rutas ajenas se rechazan', async () => {
+  conCuentaDeServicio();
+  const imagen = require('../api/imagen');
+  let r = vertexImagen(conImagen);
+  let salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'plano-e1-1', prompt: 'Lin Feng kneels in the courtyard.', personajes: [{ nombre: 'Lin Feng', ruta: base + 'falta.png' }] }), salida);
+  assert.equal(salida.statusCode, 409);
+  assert.equal(salida.valor.tipo, 'falta_referencia');
+  assert.equal(r.llamadasVertex.length, 0, 'sin identidad no se pide la imagen');
+  salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'plano-e1-1', prompt: 'Lin Feng kneels in the courtyard.', personajes: [{ nombre: 'Lin Feng', ruta: 'drama-studio/proyectos/potro00001/medios/x.png' }] }), salida);
+  assert.equal(salida.statusCode, 400);
+  for (const [respuestaVertex, estado, tipo] of [
+    [() => new Response(JSON.stringify({ candidates: [{ finishReason: 'IMAGE_SAFETY' }] })), 422, 'bloqueo'],
+    [() => new Response(JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'No puedo' }] } }] })), 422, 'bloqueo'],
+    [() => new Response(JSON.stringify({ error: { code: 429, status: 'RESOURCE_EXHAUSTED', message: 'Quota exceeded' } }), { status: 429 }), 429, 'cuota'],
+  ]) {
+    r = vertexImagen(respuestaVertex);
+    salida = respuesta();
+    await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'escenario-l1', prompt: 'An empty stone courtyard at dawn.', formato: '16:9' }), salida);
+    assert.equal(salida.statusCode, estado, tipo);
+    assert.equal(salida.valor.tipo, tipo);
+    assert.equal(r.llamadasVertex.length, 1, 'ni el bloqueo ni la cuota se reintentan dentro del servidor con un modelo global');
+  }
+});
+
+test('urls: firma solo rutas del proyecto', async () => {
+  conCuentaDeServicio();
+  vertexImagen(conImagen);
+  const urls = require('../api/urls');
+  const ok = respuesta();
+  await urls(peticion({ method: 'POST', url: '/api/urls', headers: { cookie: acceso.COOKIE + '=' + token() }, body: { proyecto: 'pimagen0001', ver: [base + 'personaje-c1.png'] } }), ok);
+  assert.equal(ok.statusCode, 200);
+  assert.match(ok.valor.urls[base + 'personaje-c1.png'], /X-Goog-Signature=/);
+  const malo = respuesta();
+  await urls(peticion({ method: 'POST', url: '/api/urls', headers: { cookie: acceso.COOKIE + '=' + token() }, body: { proyecto: 'pimagen0001', ver: ['drama-studio/proyectos/pimagen0001/proyecto.json'] } }), malo);
+  assert.equal(malo.statusCode, 400);
+});

@@ -190,6 +190,34 @@ function urlVertex(proyecto, ubicacion, modelo, metodo) {
   return `${host}/v1/projects/${proyecto}/locations/${ubicacion}/publishers/google/models/${modelo}:${metodo}`;
 }
 
+// ─── URL firmada V4 de Cloud Storage ───
+// Sirve para ver (GET) y para subir desde el navegador (PUT): los medios
+// nunca pasan por una función de Vercel (límite de 4,5 MB).
+function firmarUrl(cuenta, bucket, ruta, { metodo = 'GET', segundos = 6 * 3600, descargarComo = '' } = {}) {
+  const ahora = new Date();
+  const fechaHora = ahora.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const fecha = fechaHora.slice(0, 8);
+  const alcance = `${fecha}/auto/storage/goog4_request`;
+  const params = [
+    ['X-Goog-Algorithm', 'GOOG4-RSA-SHA256'],
+    ['X-Goog-Credential', `${cuenta.client_email}/${alcance}`],
+    ['X-Goog-Date', fechaHora],
+    ['X-Goog-Expires', String(Math.min(604800, segundos))],
+    ['X-Goog-SignedHeaders', 'host'],
+  ];
+  // Sin esta cabecera firmada el navegador abre el archivo en vez de bajarlo.
+  if (descargarComo) params.push(['response-content-disposition', `attachment; filename="${String(descargarComo).replace(/[^\w.-]+/g, '_').slice(0, 120)}"`]);
+  // RFC 3986: encodeURIComponent deja pasar !'()* y la firma canónica no los admite.
+  const cod = s => encodeURIComponent(s).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+  const consulta = params.map(([k, v]) => `${cod(k)}=${cod(v)}`).sort().join('&');
+  const camino = ruta.split('/').map(cod).join('/');
+  const canonica = [metodo, `/${bucket}/${camino}`, consulta, 'host:storage.googleapis.com', '', 'host', 'UNSIGNED-PAYLOAD'].join('\n');
+  const resumen = crypto.createHash('sha256').update(canonica).digest('hex');
+  const aFirmar = ['GOOG4-RSA-SHA256', fechaHora, alcance, resumen].join('\n');
+  const firma = crypto.createSign('RSA-SHA256').update(aFirmar).sign(cuenta.private_key, 'hex');
+  return `https://storage.googleapis.com/${bucket}/${camino}?${consulta}&X-Goog-Signature=${firma}`;
+}
+
 // bot@proyecto.iam.gserviceaccount.com → bot…@proyecto.iam.gserviceaccount.com
 function ocultarCorreo(correo) {
   const texto = String(correo || '');
@@ -204,5 +232,5 @@ function ocultarCorreo(correo) {
 module.exports = {
   cfg, describirAjustes, ubicacionImagen, ubicacionesImagen,
   MODELOS_IMAGEN, MODELOS_VIDEO, CORS_BUCKET,
-  ErrorConfiguracion, cargarCuentaServicio, tokenDeAcceso, credenciales, urlVertex, ocultarCorreo,
+  ErrorConfiguracion, cargarCuentaServicio, tokenDeAcceso, credenciales, urlVertex, ocultarCorreo, firmarUrl,
 };

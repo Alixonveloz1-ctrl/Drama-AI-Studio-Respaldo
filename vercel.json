@@ -9,6 +9,12 @@
     },
     "api/proyectos.js": {
       "maxDuration": 30
+    },
+    "api/imagen.js": {
+      "maxDuration": 60
+    },
+    "api/urls.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

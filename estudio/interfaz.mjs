@@ -29,3 +29,13 @@ export function cerrarHoja() {
   const contenedor = document.getElementById('modales');
   if (contenedor) contenedor.innerHTML = '';
 }
+
+// Imagen a pantalla completa (tocar para cerrar). Para revisar desde el teléfono.
+export function verImagen(url, texto = '') {
+  const capa = document.createElement('div');
+  capa.className = 'visor';
+  capa.innerHTML = `<button type="button" class="visor-cerrar" aria-label="Cerrar">✕</button><img alt="">${texto ? `<p>${escapar(texto)}</p>` : ''}`;
+  capa.querySelector('img').src = url;
+  capa.addEventListener('click', () => capa.remove());
+  document.body.append(capa);
+}
