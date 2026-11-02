@@ -588,3 +588,29 @@ test('montaje: los planos nunca bajan del mínimo; si no caben, la escena se ala
   assert.equal(I.sexoDe({ aspecto: 'Mujer de pelo largo' }), 'mujer');
   assert.equal(I.sexoDe({ appearance: 'short black hair' }), '');
 });
+
+test('guion: si un bloque sale corto en todos los intentos, el reintento dice cuánto falta y al final se escribe en dos partes', async () => {
+  const datos = { formulario, universo: universoValido(), biblia: { direccionVisual: 'ocre', ritmoNarrativo: 'rápido' }, episodios: {} };
+  const corto = () => texto(bloqueValido({ palabras: 100 }));
+  respuestas = [texto({ objetivo: 'a', curvaEmocional: 'b', imagenClave: 'c', notaDeDireccion: 'd', quedaAbierto: '' }),
+    corto(), corto(), corto(), corto(), texto(bloqueValido()), texto(bloqueValido({ apertura: false }))];
+  const avisos = [];
+  const ep = await G.escribirGuion(datos, 1, { guardar: async () => {}, aviso: a => avisos.push(a) });
+  assert.match(llamadas[2].cuerpo.mensaje, /TE FALTARON \d+ PALABRAS/);
+  assert.equal(ep.plan.length, 2, 'el bloque se partió en dos');
+  assert.equal(ep.bloques.length, 2);
+  assert.equal(ep.estado, 'completo');
+  assert.ok(avisos.some(a => /lo escribo en dos partes/.test(a)));
+  assert.match(llamadas[1].cuerpo.mensaje, /escribe entre \d+ y \d+ escenas completas/);
+});
+
+test('guion: en una historia con Sistema, sus propias líneas prueban el subgénero y el elemento especial', () => {
+  const f = { ...formulario, genero: 'sistema_juego', subgeneros: ['sistema_awakening'] };
+  const u = G.validarUniverso({ ...universoCrudo, sistema: { nombre: 'Sistema', reglaDelJuego: 'x' } }, f).universo;
+  const b = bloqueValido();
+  b.escenas[0].lineas.splice(1, 0, { tipo: 'sistema', personaje: null, texto: 'Sistema activado. Misión: sobrevive esta noche.' });
+  delete b.huellas;
+  b.apertura.citaElemento = 'una cita que no aparece en ningún sitio del texto';
+  const { problemas } = G.validarBloque(b, ctx({ universo: u, genero: f.genero, huellas: P.huellasPedidas(f) }));
+  assert.deepEqual(problemas, []);
+});

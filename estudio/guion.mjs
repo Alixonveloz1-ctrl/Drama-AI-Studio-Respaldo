@@ -226,9 +226,15 @@ export function validarBloque(json, ctx) {
   const huellasCrudas = Array.isArray(json?.huellas) ? json.huellas : [];
   const huellas = [];
   const faltan = [];
+  // Si la historia tiene Sistema, sus propias líneas ya prueban el subgénero
+  // «Sistema / Awakening» (y los géneros de sistema): no se rechaza un bloque
+  // solo porque el modelo olvidó copiar esa cita.
+  const lineaSistema = todas.find(l => l.tipo === 'sistema');
+  const pruebaSistema = clave => lineaSistema && (clave === 'sistema_awakening' || (clave === 'genero' && ['videojuego', 'sistema_juego'].includes(ctx.genero)));
   for (const h of huellasPedidas) {
     const dada = huellasCrudas.find(x => String(x?.de || '') === h.clave && citaValida(String(x?.cita || '')) && conAccion.includes(normalizar(x.cita)));
     if (dada) huellas.push({ de: h.clave, cita: String(dada.cita) });
+    else if (pruebaSistema(h.clave)) huellas.push({ de: h.clave, cita: lineaSistema.texto });
     else faltan.push(h.etiqueta);
   }
   if (faltan.length) problemas.push(`no se nota ${faltan.join(', ')} (falta su cita literal en "huellas"); cada elección del dueño tiene que verse en el bloque`);
@@ -242,7 +248,8 @@ export function validarBloque(json, ctx) {
     const limite15 = Math.round(P.PALABRAS_POR_MINUTO / 4);       // ≈ 15 s
     const limite30 = Math.round(P.PALABRAS_POR_MINUTO / 2);       // ≈ 30 s
     if (!citaValida(a.citaConflicto || '') || posicionEnPalabras(a.citaConflicto) > limite15) problemas.push('la apertura no muestra el conflicto en los primeros 15 segundos');
-    if (!citaValida(a.citaElemento || '') || posicionEnPalabras(a.citaElemento) > limite30) problemas.push('el elemento especial no aparece en los primeros 30 segundos');
+    const sistemaATiempo = universo.tieneSistema && lineaSistema && posicionEnPalabras(lineaSistema.texto) <= limite30;
+    if (!sistemaATiempo && (!citaValida(a.citaElemento || '') || posicionEnPalabras(a.citaElemento) > limite30)) problemas.push(universo.tieneSistema ? 'el Sistema no aparece en los primeros 30 segundos (su primera línea tiene que llegar en las primeras ~70 palabras)' : 'el elemento especial no aparece en los primeros 30 segundos');
     if (ARRANQUE_AMBIENTAL.test(normalizar(escenas[0]?.accion || ''))) problemas.push('abre con ambientación en vez de entrar en el conflicto');
   }
 
@@ -268,6 +275,7 @@ export function validarBloque(json, ctx) {
 async function pedirValidado(prompt, validar, { control, aviso, etiqueta }) {
   let comentario = '';
   let ultimo = '';
+  let problemas = [];
   for (let intento = 0; intento < INTENTOS; intento++) {
     aviso?.(intento ? `${etiqueta}: intento ${intento + 1} de ${INTENTOS}…` : `${etiqueta}…`);
     const crudo = await pedirTexto({ ...prompt, mensaje: prompt.mensaje + comentario }, { control, aviso });
@@ -279,10 +287,13 @@ async function pedirValidado(prompt, validar, { control, aviso, etiqueta }) {
     }
     const resultado = validar(json);
     if (!resultado.problemas.length) return resultado;
-    ultimo = resultado.problemas.join('; ');
-    comentario = `\n\nREINTENTO OBLIGATORIO: la respuesta anterior se rechazó porque ${ultimo}. Corrígelo y vuelve a escribirlo completo.`;
+    problemas = resultado.problemas;
+    ultimo = problemas.join('; ');
+    const corto = ultimo.match(/demasiado corto: (\d+) palabras habladas y el mínimo es (\d+)/);
+    const cuanto = corto ? `\nTE FALTARON ${Number(corto[2]) - Number(corto[1])} PALABRAS como mínimo: añade ${Math.max(1, Math.ceil((Number(corto[2]) - Number(corto[1])) / 80))} escena(s) completa(s) más (con su conflicto, su reacción y su diálogo), sin alargar las frases. Cuenta las palabras antes de responder.` : '';
+    comentario = `\n\nREINTENTO OBLIGATORIO: la respuesta anterior se rechazó porque ${ultimo}.${cuanto} Corrígelo y vuelve a escribirlo completo.`;
   }
-  throw Object.assign(new Error(`${etiqueta}: el modelo no cumplió el formato después de ${INTENTOS} intentos (${ultimo}). Lo ya guardado se conserva.`), { tipo: 'formato' });
+  throw Object.assign(new Error(`${etiqueta}: el modelo no cumplió el formato después de ${INTENTOS} intentos (${ultimo}). Lo ya guardado se conserva.`), { tipo: 'formato', problemas });
 }
 
 export async function generarIdeas(datos, opciones) {
@@ -348,8 +359,10 @@ export async function escribirGuion(datos, numero, opciones) {
     const pieza = ep.plan[i];
     const etiqueta = `Escribiendo el bloque ${i + 1} de ${ep.plan.length}`;
     try {
+      const vistas = new Set((ep.bloques[i - 1]?.huellas || []).map(h => h.de));
+      const huellas = P.huellasPedidas(datos.formulario).filter(h => !vistas.has(h.clave));
       const { bloque } = await pedirValidado(P.promptBloque(datos, numero, i, ep.plan),
-        json => validarBloque(json, { universo: datos.universo, minimoPalabras: Math.ceil(pieza.palabras * 0.9), ciclos: pieza.ciclos, esApertura: i === 0, huellas: P.huellasPedidas(datos.formulario) }),
+        json => validarBloque(json, { universo: datos.universo, genero: datos.formulario.genero, minimoPalabras: Math.ceil(pieza.palabras * 0.9), ciclos: pieza.ciclos, esApertura: i === 0, huellas }),
         { control, aviso, etiqueta });
       for (const escena of bloque.escenas) escena.id = prefijo + (++escenaNum);
       ep.bloques.push(bloque);
@@ -363,6 +376,15 @@ export async function escribirGuion(datos, numero, opciones) {
         ep.plan.splice(i, 1, ...partir(pieza));
         await guardar?.();
         aviso?.('Ese bloque no cupo en el tiempo del servidor: lo parto en dos más pequeños.');
+        i--;
+        continue;
+      }
+      // Salió corto (o sin alguna prueba) en todos los intentos: escribirlo en
+      // dos partes más pequeñas es más fácil de cumplir que repetirlo igual.
+      if (e.tipo === 'formato' && pieza.palabras >= 160 && (e.problemas || []).some(p => /demasiado corto|no se nota|ciclo/.test(p))) {
+        ep.plan.splice(i, 1, ...partir(pieza));
+        await guardar?.();
+        aviso?.('Ese bloque salió corto varias veces: lo escribo en dos partes más pequeñas.');
         i--;
         continue;
       }

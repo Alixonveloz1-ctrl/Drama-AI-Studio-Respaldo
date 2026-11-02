@@ -434,7 +434,7 @@ ${REGLAS_ESCRITURA}
 ${esEcchi(f) ? '\n' + REGLAS_ECCHI_GUION + '\n' : ''}${canon ? `\n═══ GUION YA ESCRITO (canon inmediato: continúa desde aquí, no lo repitas ni lo resumas) ═══\n${canon}\n═══ FIN DEL GUION YA ESCRITO ═══\n` : ''}
 ESCRIBE AHORA: ${textoFase(pieza.fase, f.cierre)}
 ${pieza.parte ? `Este es un TROZO (${pieza.parte}) de esa fase: escribe solo esa parte y deja la historia lista para seguir.` : ''}
-- Unas ${pieza.palabras} palabras habladas en total (diálogo, pensamiento${u.tieneSistema ? ' y Sistema' : ''}). MÍNIMO ${Math.ceil(pieza.palabras * 0.9)}: un bloque más corto se rechaza.
+- Unas ${pieza.palabras} palabras habladas en total (diálogo, pensamiento${u.tieneSistema ? ' y Sistema' : ''}). MÍNIMO ${Math.ceil(pieza.palabras * 0.9)}: un bloque más corto se rechaza. Para llegar, escribe entre ${Math.max(2, Math.ceil(pieza.palabras / 110))} y ${Math.max(3, Math.ceil(pieza.palabras / 60))} escenas completas y cuenta las palabras antes de responder.${esApertura && u.tieneSistema ? '\n- El Sistema aparece YA en la primera escena: su primera línea ("tipo":"sistema") llega antes de las primeras 70 palabras.' : ''}
 - Al menos ${pieza.ciclos} ciclo(s) de retención COMPLETOS (problema → solución → reacción de los demás → recompensa visible).
 - Escenas de 40 a 150 palabras cada una. Ninguna escena vacía ni de relleno.
 - El pensamiento («pensamiento») es SOLO del protagonista (${protagonista.id} = ${protagonista.nombre}) y va antes de su jugada.${u.tieneSistema ? '\n- Las líneas del Sistema llevan "tipo":"sistema" y "personaje":null. Son paneles o notificaciones breves.' : ''}
