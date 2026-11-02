@@ -71,6 +71,15 @@ Mandan sobre la especificación donde la contradigan:
   semirrealista pero pulido y luminoso, piel de porcelana, colores vivos, caras
   de estrella de drama coreano o chino (rasgos de idol), no caras corrientes.
   Nunca anime. Va siempre primero y no se sustituye.
+- **Lugares sin imagen:** los escenarios NO tienen imagen de referencia (la foto
+  quedaba pegada como fondo). El director de arte escribe de cada lugar una ficha
+  muy detallada en inglés (inventario cerrado y posiciones) y esa ficha va
+  completa, palabra por palabra, en cada imagen de ese lugar. Todo lo hace el
+  director; el dueño no coloca nada a mano.
+- **Sin sonido de ambiente aparte:** el ambiente y los efectos los pone Veo en
+  cada clip. La fase 6 son voces y música.
+- **Conversación antes que código:** cuando el dueño está explicando algo, no se
+  edita nada hasta que termine y diga que siga.
 
 ## Construcción por fases
 

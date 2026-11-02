@@ -33,7 +33,7 @@
 //  · Todo se comprueba aquí, en el texto, ANTES de pagar ninguna imagen.
 // ════════════════════════════════════════════════════════════════
 import { pedirTexto, parsearJSON } from './texto.mjs';
-import { contarPalabras, normalizar } from './guion.mjs';
+import { contarPalabras, normalizar, asegurarLugares } from './guion.mjs';
 import { contextoEleccion, segundosDe, esEcchi } from './prompts.mjs';
 import { direccionDeAspecto } from './imagenes.mjs';
 
@@ -68,8 +68,8 @@ export function nombreDe(u, id) {
 function fichaVisual(u) {
   const personajes = u.personajes.map(p => `- ${p.id} = ${p.nombre}: ${p.appearance}`).join('\n');
   const variantes = (u.variantes || []).map(v => `- ${v.id} = ${v.nombre} (variante de ${v.madre}): ${v.cambio}`).join('\n');
-  const escenarios = u.escenarios.map(e => `- ${e.id} = ${e.nombre} (${e.interior ? 'INTERIOR' : 'EXTERIOR'}): ${e.description || e.descripcion}`).join('\n');
-  return `PERSONAJES (aspecto en inglés para los prompts):\n${personajes}${variantes ? `\nVARIANTES (usa su id cuando el personaje aparece así):\n${variantes}` : ''}\n\nESCENARIOS (inventario cerrado):\n${escenarios}`;
+  const escenarios = u.escenarios.map(e => `- ${e.id} = ${e.nombre} (${e.interior ? 'INTERIOR' : 'EXTERIOR'}): ${e.ficha || e.description || e.descripcion}`).join('\n');
+  return `PERSONAJES (aspecto en inglés para los prompts):\n${personajes}${variantes ? `\nVARIANTES (usa su id cuando el personaje aparece así):\n${variantes}` : ''}\n\nLUGARES (ficha de cada uno: inventario cerrado y posiciones fijas):\n${escenarios}`;
 }
 
 function escenasParaPrompt(u, escenas) {
@@ -114,7 +114,7 @@ PUESTA EN ESCENA Y CONTINUIDAD (lo más importante; un fallo aquí tira imágene
 - "cambio" (EN INGLÉS, desde el segundo plano): qué es distinto respecto al plano anterior: quién se movió, a dónde, qué postura nueva, qué objeto cambió ("Lin Fan has tripped and is falling forward onto Su Mei, who was kneeling by the bed"). Si en el ancla ocurre una acción (cae, se levanta, empuja), la imagen muestra ese momento, no el anterior.
 - Para que una acción entre dos personas sea posible, las dos están colocadas a su alcance desde el plano anterior (si él cae encima de ella, ella está en su camino).
 
-INVENTARIO CERRADO DEL LUGAR: solo existen los muebles y objetos grandes que la descripción del escenario menciona o que cualquiera daría por sentados en ESE lugar. Si la acción necesita algo que el lugar no tiene, reescribe la acción con lo que sí hay. En un interior, la lluvia o la nieve solo se ven por la ventana o la puerta, nunca dentro.
+FICHA DEL LUGAR (inventario cerrado): cada lugar tiene su ficha con todo lo que existe en él y dónde está. Esa ficha completa acompaña a cada imagen por su cuenta: en el prompt NO la copies; di desde dónde mira la cámara y qué parte del lugar se ve («facing the sea, the black rocks on the right, the palm grove behind her»), siempre de acuerdo con la ficha. No inventes elementos que la ficha no tiene ni muevas los que tiene. Si la historia cambia el lugar (encienden una hoguera, levantan un refugio), ese cambio va en "estado" y se mantiene en los planos siguientes. En un interior, la lluvia o la nieve solo se ven por la ventana o la puerta, nunca dentro.
 
 LITERALIDAD: una figura sobre un sentimiento («le hervía la sangre») se filma como gesto o postura, nunca como efecto especial.
 
@@ -302,6 +302,8 @@ export function agrupar(escenas) {
 
 // Desglosa las escenas que no lo tienen (o solo una, si se pide rehacerla).
 export async function desglosar(datos, numero, { control, aviso, guardar, soloEscena, rehacerTodo, alAvanzar }) {
+  // Proyectos antiguos: el director detalla los lugares antes de desglosar.
+  await asegurarLugares(datos, { control, aviso, guardar });
   const todas = escenasDelEpisodio(datos, numero);
   const pendientes = soloEscena ? todas.filter(e => e.id === soloEscena) : rehacerTodo ? todas : todas.filter(e => !e.planos?.length);
   const informe = { revisadas: 0, correcciones: 0, sinRevisar: [] };

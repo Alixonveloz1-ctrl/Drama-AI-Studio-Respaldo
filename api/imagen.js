@@ -9,7 +9,8 @@
 //   2. La referencia de CONTINUIDAD (el plano anterior) con su contrato 10.4.
 //   3. Cada FICHA DE PERSONAJE seguida de su contrato 10.2. Sin esa línea el
 //      modelo copia el encuadre de la ficha en vez de la identidad.
-//   4. La referencia del ESCENARIO, si existe.
+//   4. El LUGAR descrito en texto (decisión del dueño: sin imagen del
+//      escenario; la foto acababa pegada como fondo y no se integraba).
 //   5. Las reglas fijas, la dirección de aspecto del proyecto (casting
 //      atractivo, género y CADA subgénero elegido, ecchi) y la escena.
 // Las referencias se leen del bucket aquí mismo. Si una ficha de personaje no
@@ -47,15 +48,11 @@ const CONTRATO_CONTINUIDAD = `This reference is the immediately preceding physic
 // El primer plano (general) de la escena: el mapa del lugar y de las personas.
 const CONTRATO_SITUACION = 'SCENE MAP above: the opening wide shot of this SAME scene. It fixes the room layout, furniture, props and where each person started. Keep that geography exactly; people and objects move only as the SCENE STATE below says. Do not copy its framing.';
 
-// El escenario es una REFERENCIA para reconstruir el lugar, no un fondo. Fallo
-// visto por el dueño: el lugar pegado detrás como un decorado plano, con una
-// mesa diminuta al fondo y el personaje gigante delante.
 // Va al FINAL, después de la escena: la última instrucción es la que manda, y
 // una ficha que dice «blusa mojada» no puede ganarle (fallo visto: la tela se
 // transparentaba y Veo bloqueaba después el video de ese plano).
 const CIERRE = 'FINAL CHECK before rendering: the chest is always covered by OPAQUE fabric — no see-through, sheer or translucent clothing, wet fabric never turns transparent, and nothing of the breasts shows or pokes through the fabric (a bra or camisole is always worn underneath). Figure, legs and neckline stay as described. No text anywhere in the image.';
 
-const CONTRATO_ESCENARIO = 'LOCATION REFERENCE above: this is the place where the scene happens. It is NOT a background plate: never paste it behind the characters and never reuse its framing. REBUILD this same place as a real three-dimensional space — the same architecture, furniture, props, materials and palette, in the same layout — and film it from the camera position and lens of THIS shot. The people stand INSIDE that space, on its floor, at true human scale next to its furniture.';
 
 function reglas(nombres, formato, ecchi, direccion, conEstado) {
   // Con estado de escena, la regla 2 ya no dice «a nadie más»: esa frase,
@@ -171,22 +168,17 @@ module.exports = puerta({ metodos: ['POST'] }, async (req, { google }) => {
       const nombre = String(p.nombre).trim().slice(0, 80);
       tareas.push({ ruta: p.ruta, quePara: `la ficha de ${nombre}`, contrato: contratoPersonaje(nombre) });
     }
-    const [leidas, lugar] = await Promise.all([
-      Promise.all(tareas.map(t => leerRef(t.ruta, t.quePara))),
-      b.escenario ? leerRef(b.escenario, 'la imagen del escenario') : null,
-    ]);
+    const leidas = await Promise.all(tareas.map(t => leerRef(t.ruta, t.quePara)));
     let presupuesto = MAX_REFERENCIAS_BYTES;
     leidas.forEach((l, i) => { presupuesto -= l.bytes.length; partes.push(l.parte, { text: tareas[i].contrato }); });
     if (presupuesto < 0) throw new ErrorEstudio('Las imágenes de referencia de este plano pesan demasiado para enviarlas juntas. No se generó; prueba con menos personajes en el plano.', { estado: 413, tipo: 'peticion' });
-    if (lugar) {
-      if (presupuesto - lugar.bytes.length > 0) partes.push(lugar.parte, { text: CONTRATO_ESCENARIO });
-      else avisos.push('No cupo la imagen del escenario junto a las fichas; se generó con las fichas y el texto del lugar.');
-    }
     // Estado de la escena en este instante: quién está, dónde, y qué cambió.
     const estado = texto(b.estado, 1500);
     const cambio = texto(b.cambio, 800);
     const fuera = (Array.isArray(b.fuera) ? b.fuera : []).map(n => String(n || '').trim().slice(0, 80)).filter(Boolean).slice(0, 8);
+    const lugar = texto(b.lugar, 2500);
     const escena = [
+      lugar ? `LOCATION — the complete, fixed description of this place. Every shot of this place shows these same elements in these same positions; only the camera angle changes. Build it together with the characters as ONE real place — same ground, same light, same perspective — never as a backdrop behind them:\n${lugar}` : '',
       estado ? `SCENE STATE AT THIS INSTANT (everyone in the scene, visible or not, and the key objects):\n${estado}` : '',
       fuera.length ? `PRESENT BUT OUT OF FRAME (still in the room; this framing leaves them out): ${fuera.join(', ')}.` : '',
       cambio ? `WHAT CHANGED SINCE THE PREVIOUS SHOT (show this new moment; do not repeat the previous frame's poses):\n${cambio}` : '',

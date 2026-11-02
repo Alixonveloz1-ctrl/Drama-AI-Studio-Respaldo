@@ -662,20 +662,23 @@ test('imagen: si Google tarda demasiado se corta con tiempo de sobra y lo dice; 
   assert.equal(r.llamadasVertex.length, 1);
 });
 
-test('imagen: el escenario es una referencia para reconstruir el lugar a escala real, no un fondo pegado', async () => {
+test('imagen: el lugar va en texto (ficha completa) y una imagen de escenario ya no se adjunta; escala real', async () => {
   conCuentaDeServicio();
   const { llamadasVertex } = vertexImagen(conImagen);
   const imagen = require('../api/imagen');
   const salida = respuesta();
-  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'plano-e1-1', prompt: 'Scene with Su Mei (long black hair, linen dress): wide shot, she stands beside the table.',
-    personajes: [{ nombre: 'Su Mei', ruta: base + 'personaje-c2.png' }], escenario: base + 'escenario-l1.png' }), salida);
+  const ficha = 'Desert island (exterior). A crescent of white sand curves to the left; a dense palm grove rises behind it; black volcanic rocks stand on the right; the broken hull of the ship lies half-buried in the sand at the centre.';
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'plano-e1-1', prompt: 'Scene with Su Mei (long black hair, linen dress): wide shot, she stands beside the hull, facing the sea.',
+    personajes: [{ nombre: 'Su Mei', ruta: base + 'personaje-c2.png' }], escenario: base + 'escenario-l1.png', lugar: ficha }), salida);
   assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
   const partes = llamadasVertex[0].cuerpo.contents[0].parts;
-  const contrato = partes.find(p => /^LOCATION REFERENCE above/.test(p.text || ''))?.text || '';
-  assert.match(contrato, /It is NOT a background plate: never paste it behind the characters/);
-  assert.match(contrato, /REBUILD this same place as a real three-dimensional space/);
-  assert.match(partes.at(-1).text, /8\. REAL-WORLD SCALE AND ONE PERSPECTIVE:.*a table top reaches an adult's hip/);
-  assert.match(partes.at(-1).text, /never make a person a giant in front of a tiny set/);
+  assert.equal(partes.filter(p => p.inlineData).length, 1, 'solo la ficha del personaje: el escenario no viaja como imagen');
+  assert.ok(!partes.some(p => /LOCATION REFERENCE above/.test(p.text || '')));
+  const ultimo = partes.at(-1).text;
+  assert.match(ultimo, /LOCATION — the complete, fixed description of this place\. Every shot of this place shows these same elements in these same positions/);
+  assert.ok(ultimo.includes(ficha), 'la ficha llega completa, palabra por palabra');
+  assert.ok(ultimo.indexOf('LOCATION —') < ultimo.indexOf('Scene to show:'));
+  assert.match(ultimo, /8\. REAL-WORLD SCALE AND ONE PERSPECTIVE:.*a table top reaches an adult's hip/);
 });
 
 test('imagen: la tela nunca se transparenta y esa regla va al final, después de la escena', async () => {

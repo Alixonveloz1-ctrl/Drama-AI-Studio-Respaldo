@@ -25,7 +25,7 @@ import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
 import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
 import { crearControl } from './texto.mjs';
 import { segundosDe, esEcchi } from './prompts.mjs';
-import { direccionDeAspecto } from './imagenes.mjs';
+import { direccionDeAspecto, textoDelLugar } from './imagenes.mjs';
 import { contarPalabras } from './guion.mjs';
 import { explicar } from './red.mjs';
 import { escapar, avisar, verImagen } from './interfaz.mjs';
@@ -182,7 +182,7 @@ async function imagenPlano(escena, indice, opciones) {
     estado: plano.estado || undefined,
     cambio: indice > 0 ? plano.cambio || undefined : undefined,
     fuera,
-    escenario: u.escenarios.find(x => x.id === escena.escenario)?.referencia?.ruta || undefined,
+    lugar: textoDelLugar(u.escenarios.find(x => x.id === escena.escenario)),
     ecchi: esEcchi(d.formulario),
     direccion: direccionDeAspecto(d.formulario),
   };

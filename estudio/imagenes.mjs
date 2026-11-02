@@ -90,7 +90,14 @@ export function promptFichaPersonaje(p, formulario) {
   return `Single clean CHARACTER REFERENCE still of ${p.nombre}, ${belleza}, ${p.rol || 'character'}. ${p.appearance || p.aspecto}.${ecchi} ONE person only, full body from head to feet, relaxed natural standing pose, three-quarter front view, face clearly readable, hands visible, plain light-grey studio backdrop with soft flattering light. Wardrobe exactly as described, clean, dry and fully opaque (this is the reference outfit; wet or torn states belong to scenes). Hair exactly as described. No turnaround, no collage, no multiple poses, no expression sheet.`;
 }
 
-// Referencia de escenario: el lugar vacío, para fijar su arquitectura y su luz.
+// El lugar, en texto, para cada plano (decisión del dueño: sin imagen del
+// escenario; la foto del lugar acababa pegada como fondo).
+export function textoDelLugar(e) {
+  if (!e) return undefined;
+  return `${e.nombre} (${e.interior ? 'interior' : 'exterior'}). ${e.ficha || e.description || e.descripcion}`.replace(/\s+/g, ' ').trim();
+}
+
+// (Ya no se usa: los escenarios no tienen imagen.)
 export function promptEscenario(e) {
   return `ESTABLISHING SHOT of a drama location: ${e.nombre}. ${e.description || e.descripcion}. ${e.interior ? 'Interior space.' : 'Exterior space.'} No people in frame. A wide production-design reference still that clearly shows the layout, architecture, materials, props and motivated light of the place, filmed at eye level with a natural lens so every piece of furniture and every door has its true real-world size (a table at hip height, a door a little taller than a person).`;
 }

@@ -455,3 +455,20 @@ test('video: el audio prohíbe también gritos y jadeos, y el negativo los lista
   assert.match(n, /screaming, shouting/);
   assert.match(n, /see-through clothing/);
 });
+
+test('lugares: el director escribe una ficha detallada en inglés de cada lugar y va completa en cada plano', async () => {
+  const datos = { formulario, universo: universoValido(), biblia: { direccionVisual: 'ocre' } };
+  const larga = n => Array.from({ length: n }, (_, i) => `the stone item ${i} with old wood`).join(', ');
+  respuestas = [
+    texto({ lugares: [{ id: 'l1', ficha: 'corta' }, { id: 'l2', ficha: larga(30) }] }),
+    texto({ lugares: [{ id: 'l1', ficha: larga(30) }, { id: 'l2', ficha: larga(30) }] }),
+  ];
+  let guardados = 0;
+  assert.equal(await G.asegurarLugares(datos, { guardar: async () => { guardados++; } }), 2);
+  assert.match(llamadas[1].cuerpo.mensaje, /REINTENTO OBLIGATORIO.*demasiado corta/);
+  assert.ok(datos.universo.escenarios.every(e => e.ficha.length > 200));
+  assert.equal(guardados, 1);
+  assert.equal(await G.asegurarLugares(datos, {}), 0, 'lo que ya tiene ficha no se repite');
+  assert.ok(I.textoDelLugar(datos.universo.escenarios[0]).includes(datos.universo.escenarios[0].ficha));
+  assert.match(D.promptDesglose({ ...datos, episodios: {} }, [{ ...escenaDePrueba(), id: 'e1' }]).mensaje, /LUGARES \(ficha de cada uno/);
+});

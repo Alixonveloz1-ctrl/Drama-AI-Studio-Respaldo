@@ -109,6 +109,32 @@ export function validarBiblia(json) {
   return { problemas, biblia: b };
 }
 
+export function validarLugares(json, escenarios) {
+  const crudos = Array.isArray(json?.lugares) ? json.lugares : [];
+  const problemas = [];
+  const fichas = {};
+  for (const e of escenarios) {
+    const ficha = String(crudos.find(x => String(x?.id) === e.id)?.ficha || '').replace(/\s+/g, ' ').trim();
+    const n = contarPalabras(ficha);
+    if (n < 90) problemas.push(`la ficha de ${e.nombre} (${e.id}) es demasiado corta (${n} palabras; mínimo 90)`);
+    else if (n > 320) problemas.push(`la ficha de ${e.nombre} (${e.id}) es demasiado larga (${n} palabras; máximo 320)`);
+    else if (!/\b(the|with|and|of)\b/i.test(ficha)) problemas.push(`la ficha de ${e.nombre} no está en inglés`);
+    else fichas[e.id] = ficha;
+  }
+  return { problemas, fichas };
+}
+
+// El director escribe las fichas de los lugares que no la tengan. Se llama al
+// crear el universo y, en proyectos antiguos, antes del desglose.
+export async function asegurarLugares(datos, opciones = {}) {
+  const faltan = (datos.universo?.escenarios || []).filter(e => !e.ficha);
+  if (!faltan.length) return 0;
+  const { fichas } = await pedirValidado(P.promptLugares(datos, faltan), json => validarLugares(json, faltan), { ...opciones, etiqueta: 'El director de arte detalla los lugares' });
+  for (const e of faltan) e.ficha = fichas[e.id];
+  await opciones.guardar?.();
+  return faltan.length;
+}
+
 export function validarNota(json) {
   const n = json && typeof json === 'object' ? json : {};
   const problemas = ['objetivo', 'curvaEmocional', 'imagenClave', 'notaDeDireccion'].filter(c => !String(n[c] || '').trim()).map(c => `falta «${c}»`);
@@ -280,6 +306,7 @@ export async function generarUniverso(datos, idea, opciones) {
   const { biblia } = await pedirValidado(P.promptBiblia(datos), validarBiblia, { ...opciones, etiqueta: 'El director escribe la biblia de la serie' });
   datos.biblia = biblia;
   await opciones.guardar?.();
+  await asegurarLugares(datos, opciones);
   return universo;
 }
 

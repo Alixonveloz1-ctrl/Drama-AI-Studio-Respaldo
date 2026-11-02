@@ -279,6 +279,37 @@ ${lista(biblia.reglasDeOro).length ? `REGLAS DE ORO:\n${lista(biblia.reglasDeOro
 ${lista(biblia.arcoTemporada).length ? `ARCO DE LA TEMPORADA:\n${lista(biblia.arcoTemporada).map((a, i) => `${i + 1}. ${a}`).join('\n')}` : ''}`;
 }
 
+// ─── 3b. Fichas de los lugares (decisión del dueño) ───
+// Los lugares no tienen imagen: la foto acababa pegada como fondo. El
+// director escribe de cada lugar una ficha muy detallada que va, palabra por
+// palabra, en TODAS las imágenes de ese lugar. Así todos los planos coinciden
+// y el lugar se construye junto con los personajes.
+export function promptLugares(datos, escenarios = datos.universo.escenarios) {
+  const f = datos.formulario;
+  return {
+    sistema: `Eres el DIRECTOR DE ARTE de un drama corto asiático. Diseñas los lugares de rodaje como si fueran decorados reales: cada lugar tiene un inventario cerrado y cada cosa está siempre en el mismo sitio. Respondes SOLO JSON válido.`,
+    mensaje: `${contextoEleccion(f)}
+
+${contextoUniverso(datos)}
+
+DIRECCIÓN VISUAL DE LA SERIE: ${datos.biblia?.direccionVisual || ''}
+
+LUGARES QUE HAY QUE FICHAR:
+${escenarios.map(e => `- ${e.id} = ${e.nombre} (${e.interior ? 'interior' : 'exterior'}): ${e.descripcion}`).join('\n')}
+
+Escribe para CADA lugar una "ficha" EN INGLÉS de 120 a 220 palabras que permita dibujarlo igual en todos los planos:
+- Qué tipo de lugar es, su forma y su tamaño.
+- La distribución desde un punto de vista fijo de referencia: qué hay a la izquierda, al centro, a la derecha y al fondo.
+- TODOS los elementos fijos (muebles, estructuras, objetos grandes, accidentes del terreno) con su material, su color y su tamaño comparado con una persona.
+- El suelo, las paredes o el cielo, y la luz habitual con sus fuentes.
+- Nada de personas. Nada que contradiga la descripción del lugar ni la época.
+Ese inventario es cerrado: en ese lugar no existe nada más.
+
+Devuelve JSON: {"lugares":[{"id":"${escenarios[0]?.id || 'l1'}","ficha":"…"}]}`,
+    temperatura: 0.5,
+  };
+}
+
 // ─── 4. Nota del episodio ───
 export function promptNota(datos, numero) {
   const f = datos.formulario;

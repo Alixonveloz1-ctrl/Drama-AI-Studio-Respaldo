@@ -2,6 +2,11 @@
 // PERSONAJES — fichas de personajes con su imagen de referencia, sus
 // variantes, y los escenarios (sección 10 y 20.1).
 //
+// Decisión del dueño: los escenarios NO tienen imagen. Una foto del lugar
+// acababa pegada como fondo detrás de los personajes (la isla del naufragio
+// no se integraba). El lugar va descrito en el texto de cada plano para que
+// la imagen lo construya junto con las personas, con la misma luz.
+//
 //  · Cada personaje recurrente tiene UNA imagen de referencia limpia,
 //    generada aquí (nunca se sube a mano).
 //  · La última imagen generada es la que se usa, sin ningún paso de confirmación.
@@ -13,7 +18,7 @@
 // ════════════════════════════════════════════════════════════════
 import { proyectoActual, guardar } from './proyectos.mjs';
 import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './medios.mjs';
-import { promptFichaPersonaje, promptEscenario, promptVariante, direccionDeAspecto } from './imagenes.mjs';
+import { promptFichaPersonaje, promptVariante, direccionDeAspecto } from './imagenes.mjs';
 import { esEcchi } from './prompts.mjs';
 import { crearControl } from './texto.mjs';
 import { explicar } from './red.mjs';
@@ -72,7 +77,7 @@ function pintarAhora() {
     return;
   }
   const variantes = u.variantes || [];
-  const faltan = u.personajes.filter(x => !x.referencia).length + u.escenarios.filter(x => !x.referencia).length + variantes.filter(v => !v.referencia || v.obsoleta).length;
+  const faltan = u.personajes.filter(x => !x.referencia).length + variantes.filter(v => !v.referencia || v.obsoleta).length;
   raiz.innerHTML = `
   <div class="seccion"><h3>Personajes y escenarios</h3></div>
   <div class="card">
@@ -113,12 +118,11 @@ function pintarAhora() {
   }).join('')}
 
   <div class="seccion"><h3>Escenarios</h3></div>
+  <p class="nota">Los lugares no llevan imagen: el director escribe una ficha detallada de cada uno y esa ficha va en todos los planos de ese lugar, para que se construya junto con los personajes y coincida siempre.</p>
   ${u.escenarios.map(e => `<div class="card ficha">
-    ${marco(e.referencia?.ruta, d.formulario.formato === '16:9' ? 'horizontal' : 'vertical ancho', e.referencia ? e.nombre : 'Sin imagen todavía')}
     <h2>${escapar(e.nombre)}</h2>
     <p class="corto">${escapar(e.descripcion)}</p>
-    ${caja('e-' + e.id)}
-    <button type="button" class="${e.referencia ? 'btn-sec' : 'btn ancho'}" data-accion="escenario" data-id="${e.id}">${e.referencia ? 'Regenerar el escenario' : 'Generar el escenario'}</button>
+    ${e.ficha ? `<details class="plegado"><summary>Ver la ficha del lugar</summary><p class="corto">${escapar(e.ficha)}</p></details>` : '<p class="nota">El director escribe su ficha antes del desglose de planos.</p>'}
   </div>`).join('')}
   ${u.personajes.every(x => x.referencia) ? `<button type="button" class="btn ancho continuar" data-accion="continuar">Continuar: escenas</button>` : ''}`;
   raiz.querySelectorAll('[data-accion]').forEach(b => { if (ocupado && !b.dataset.libre) b.disabled = true; });
@@ -145,11 +149,6 @@ async function fichaPersonaje(x, opciones) {
   x.referencia = await generar({ clave: 'personaje-' + x.id, prompt: promptFichaPersonaje(x, proyectoActual().datos.formulario), formato: '9:16' }, opciones);
   // Las variantes de una madre regenerada quedan obsoletas; no se tocan solas.
   for (const v of proyectoActual().datos.universo.variantes || []) if (v.madre === x.id && v.referencia) v.obsoleta = true;
-  await guardar();
-}
-
-async function fichaEscenario(e, opciones) {
-  e.referencia = await generar({ clave: 'escenario-' + e.id, prompt: promptEscenario(e), formato: proyectoActual().datos.formulario.formato }, opciones);
   await guardar();
 }
 
@@ -192,7 +191,6 @@ async function alPulsar(evento) {
   const id = boton.dataset.id;
   if (accion === 'continuar') { document.dispatchEvent(new CustomEvent('ir-a', { detail: 'escenas' })); return; }
   if (accion === 'personaje') return trabajar('p-' + id, async o => { await fichaPersonaje(u.personajes.find(x => x.id === id), o); return 'Ficha lista.'; });
-  if (accion === 'escenario') return trabajar('e-' + id, async o => { await fichaEscenario(u.escenarios.find(x => x.id === id), o); return 'Escenario listo.'; });
   if (accion === 'variante') return trabajar('v-' + id, async o => { await fichaVariante(u.variantes.find(x => x.id === id), o); return 'Variante lista.'; });
   if (accion === 'nueva-variante') {
     const campo = raiz.querySelector(`[data-cambio="${id}"]`);
@@ -209,7 +207,6 @@ async function alPulsar(evento) {
     return trabajar('lote', async o => {
       const elementos = [
         ...u.personajes.map(x => ({ tipo: 'personaje', x })),
-        ...u.escenarios.map(x => ({ tipo: 'escenario', x })),
         ...(u.variantes || []).map(x => ({ tipo: 'variante', x })),
       ];
       const cuenta = await tanda(elementos, {
@@ -217,7 +214,7 @@ async function alPulsar(evento) {
         yaHecho: el => Boolean(el.x.referencia) && !(el.tipo === 'variante' && el.x.obsoleta),
         hacer: (el, op) => {
           op.aviso(`${el.x.nombre}…`);
-          return el.tipo === 'personaje' ? fichaPersonaje(el.x, op) : el.tipo === 'escenario' ? fichaEscenario(el.x, op) : fichaVariante(el.x, op);
+          return el.tipo === 'personaje' ? fichaPersonaje(el.x, op) : fichaVariante(el.x, op);
         },
         alAvanzar: () => pintarPersonajes(),
       });
