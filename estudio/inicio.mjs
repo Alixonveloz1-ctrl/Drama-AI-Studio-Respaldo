@@ -26,8 +26,8 @@ function irA(panel) {
 
 function abrirProyectos() {
   abrirHoja(`
-    <h3>📁 Proyectos</h3>
-    <div class="empty"><div class="emoji">🎬</div>
+    <h3>Proyectos</h3>
+    <div class="empty"><svg class="icono"><use href="#i-carpeta"/></svg>
       <p>La lista de proyectos se reconstruye desde tu bucket, así que el mismo drama aparece en cualquier teléfono o computadora.</p>
       <p>Llega con la Historia, en la fase 2.</p>
     </div>
@@ -44,8 +44,7 @@ function cablear() {
     abrirApis().then(s => ponerPunto(resumen(s))).catch(e => { ponerPunto('mal'); if (e.status === 401) mostrarErrorSesion(e); });
   });
   $('#btnProyectos').addEventListener('click', abrirProyectos);
-  $('#btnSalir').addEventListener('click', () => cerrarSesion());
-  $('#btnVerApis')?.addEventListener('click', () => $('#btnApis').click());
+  $('#btnComprobar').addEventListener('click', () => $('#btnApis').click());
 }
 
 async function montar(usuario) {

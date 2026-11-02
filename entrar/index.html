@@ -3,34 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0a0a18">
+<meta name="theme-color" content="#09090d">
 <meta name="robots" content="noindex, nofollow">
 <title>Entrar · Drama AI Studio</title>
+<link rel="icon" href="/estudio/logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/estudio/estilos.css">
 <style>
-  .entrar-caja { max-width: 480px; margin: clamp(40px, 12vh, 110px) auto 40px; }
-  .entrar-caja .eyebrow { color: var(--accent2); letter-spacing: .13em; font-size: 11px; font-weight: 700; margin: 0; }
-  .entrar-caja h2 { font-size: clamp(28px, 7vw, 40px); line-height: 1.25; margin: 18px 0; }
-  .entrar-caja .intro { color: var(--muted); font-size: 16px; line-height: 1.7; margin-bottom: 26px; }
-  #estado { font-size: 14px; line-height: 1.6; min-height: 24px; color: var(--accent2); overflow-wrap: anywhere; margin-top: 14px; }
-  .privado { margin-top: 24px; font-size: 12px; line-height: 1.6; color: var(--muted); }
-  .entrar-pie { padding-top: calc(24px + env(safe-area-inset-top)); }
+  .entrar { padding-bottom: calc(32px + env(safe-area-inset-bottom)); }
+  .entrar .portada { min-height: min(62vh, 520px); }
+  .entrar .eyebrow { color: var(--oro); letter-spacing: .16em; font-size: 11px; font-weight: 600; margin: 0 0 10px; }
+  #estado { font-size: 14px; line-height: 1.6; min-height: 24px; color: var(--oro-claro); overflow-wrap: anywhere; margin: 14px 0 0; }
+  .privado { margin-top: 18px; font-size: 13px; line-height: 1.6; color: var(--tenue); text-align: center; }
 </style>
 </head>
 <body>
-<div id="starfield" aria-hidden="true"></div>
-<main class="app entrar-pie">
-  <p class="marca">Drama AI Studio</p>
-  <section class="card entrar-caja">
+<main class="app entrar">
+  <header class="header">
+    <div class="marca"><img src="/estudio/logo.svg" alt=""><div class="marca-texto"><span>Drama</span><span class="oro">AI Studio</span></div></div>
+  </header>
+  <section class="portada">
     <p class="eyebrow">TU ESTUDIO DE DRAMAS</p>
-    <h2 class="marca">Vuelve a tus historias.</h2>
-    <p class="intro">Dramas cortos con inteligencia artificial, desde tu teléfono.</p>
-    <button class="btn" id="entrar" disabled>Entrar con Google</button>
+    <h2>Vuelve a tus <span class="oro">historias</span>.</h2>
+    <p>Dramas cortos con inteligencia artificial, desde tu teléfono.</p>
+    <div><button class="btn" id="entrar" disabled>Entrar con Google</button></div>
     <p id="estado" role="status" aria-live="polite">Preparando el acceso…</p>
-    <p class="privado">Estudio privado · Solo la cuenta autorizada puede entrar.</p>
   </section>
+  <p class="privado">Estudio privado · Solo la cuenta autorizada puede entrar.</p>
 </main>
 <script type="module" src="/estudio/entrar.mjs"></script>
-<script type="module" src="/estudio/estrellas.mjs"></script>
 </body>
 </html>

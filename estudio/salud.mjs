@@ -105,7 +105,7 @@ export function pintarSalud(s) {
 
 export async function abrirApis() {
   const hoja = abrirHoja(`
-    <h3>ℹ️ APIs configuradas</h3>
+    <h3>APIs configuradas</h3>
     <p class="nota" style="margin:0 0 14px">Qué cuenta de Google Cloud y qué bucket usa este despliegue, y qué variable de Vercel cambia cada valor. Esta pantalla solo lee: no genera nada.</p>
     <div class="salud" id="salud-contenido"><span class="spinner"></span> Comprobando…</div>
     <button class="btn" data-cerrar style="margin-top:6px">Entendido</button>
