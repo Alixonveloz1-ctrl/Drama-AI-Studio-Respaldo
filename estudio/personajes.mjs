@@ -13,7 +13,8 @@
 // ════════════════════════════════════════════════════════════════
 import { proyectoActual, guardar } from './proyectos.mjs';
 import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './medios.mjs';
-import { promptFichaPersonaje, promptEscenario, promptVariante } from './imagenes.mjs';
+import { promptFichaPersonaje, promptEscenario, promptVariante, direccionDeAspecto } from './imagenes.mjs';
+import { esEcchi } from './prompts.mjs';
 import { crearControl } from './texto.mjs';
 import { explicar } from './red.mjs';
 import { escapar, avisar, verImagen } from './interfaz.mjs';
@@ -133,14 +134,15 @@ function aviso(texto) {
 // ─── Generación ───
 async function generar(cuerpo, opciones) {
   const p = proyectoActual();
-  const r = await pedirMedio('/api/imagen', { proyecto: p.id, modelo: modeloImagen(p.datos), ecchi: (p.datos.formulario.subgeneros || []).some(s => ['ecchi', 'harem', 'harem_inverso'].includes(s)), ...cuerpo }, opciones);
+  const f = p.datos.formulario;
+  const r = await pedirMedio('/api/imagen', { proyecto: p.id, modelo: modeloImagen(p.datos), ecchi: esEcchi(f), direccion: direccionDeAspecto(f), ...cuerpo }, opciones);
   recordarUrl(r.ruta, r.url);
   for (const a of r.avisos || []) avisar(a);
   return { ruta: r.ruta, modelo: r.modelo, fecha: Date.now() };
 }
 
 async function fichaPersonaje(x, opciones) {
-  x.referencia = await generar({ clave: 'personaje-' + x.id, prompt: promptFichaPersonaje(x), formato: '9:16' }, opciones);
+  x.referencia = await generar({ clave: 'personaje-' + x.id, prompt: promptFichaPersonaje(x, proyectoActual().datos.formulario), formato: '9:16' }, opciones);
   // Las variantes de una madre regenerada quedan obsoletas; no se tocan solas.
   for (const v of proyectoActual().datos.universo.variantes || []) if (v.madre === x.id && v.referencia) v.obsoleta = true;
   await guardar();

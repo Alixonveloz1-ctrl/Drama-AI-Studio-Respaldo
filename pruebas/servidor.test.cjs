@@ -606,3 +606,18 @@ test('video-estado: consulta en el modelo que arrancó; listo con URL de 7 días
   await estado(videoReq('/api/video-estado', { proyecto: 'pimagen0001', operacion: 'projects/x/locations/y/publishers/google/models/otro/operations/1' }), salida);
   assert.equal(salida.statusCode, 400);
 });
+
+test('imagen: la dirección de aspecto del proyecto y la regla ecchi llegan al modelo', async () => {
+  conCuentaDeServicio();
+  const { llamadasVertex } = vertexImagen(conImagen);
+  const imagen = require('../api/imagen');
+  const salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'personaje-c2', prompt: 'Single clean CHARACTER REFERENCE still of Mei, a strikingly beautiful adult woman.', ecchi: true,
+    direccion: 'CASTING of a high-budget Asian drama. GENRE LOOK — romance. She is nude.' }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  const ultimo = llamadasVertex[0].cuerpo.contents[0].parts.at(-1).text;
+  assert.match(ultimo, /10\. ADULT ECCHI PROJECT/);
+  assert.match(ultimo, /PROJECT LOOK \(chosen by the owner — apply all of it\):\nCASTING of a high-budget Asian drama\. GENRE LOOK — romance\./);
+  assert.ok(!/\bnude\b/.test(ultimo), 'la dirección también pasa por el saneado');
+  assert.ok(ultimo.indexOf('PROJECT LOOK') < ultimo.indexOf('Scene to show:'));
+});

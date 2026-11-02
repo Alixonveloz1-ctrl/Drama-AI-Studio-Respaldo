@@ -39,7 +39,7 @@ function bloqueValido({ apertura = true, palabras = 430 } = {}) {
   ];
   const relleno = 'Lo vi con mis propios ojos y no lo creo todavía.';
   const escenas = [{ titulo: 'La deuda', escenario: 'l1', personajes: ['c1', 'c2'], accion: 'Wang Hu empuja a Lin Feng contra el suelo del patio.', lineas: lineas.slice(0, 4) },
-    { titulo: 'La cura', escenario: 'l2', personajes: ['c1', 'c2'], accion: 'Lin Feng mezcla hierbas junto al niño enfermo.', lineas: lineas.slice(4) }];
+    { titulo: 'La cura', escenario: 'l2', personajes: ['c1', 'c2'], accion: 'Lin Feng mezcla hierbas junto al niño enfermo. La criada se inclina a su lado con la blusa empapada.', lineas: lineas.slice(4) }];
   let total = escenas.flatMap(e => e.lineas).reduce((n, l) => n + G.contarPalabras(l.texto), 0);
   let k = 0;
   while (total < palabras) {
@@ -53,6 +53,11 @@ function bloqueValido({ apertura = true, palabras = 430 } = {}) {
       { problema: 'fiebre', solucion: 'hierbas', reaccion: 'incredulidad', recompensa: 'respeto', citaProblema: 'Tu hijo tiene fiebre. Si no lo curo', citaReaccion: 'No puede ser. Ese inútil lo salvó', citaRecompensa: 'Toma esta bolsa de oro' },
     ],
     resumen: 'Lin Feng cura al hijo de Wang Hu.',
+    huellas: [
+      { de: 'genero', cita: 'Yo sé curarla mejor que nadie aquí' },
+      { de: 'revenge', cita: 'Hoy pagas la deuda de tu padre' },
+      { de: 'ecchi', cita: 'La criada se inclina a su lado con la blusa empapada' },
+    ],
   };
   if (apertura) json.apertura = { citaConflicto: '¡Arrodíllate, inútil! Hoy pagas la deuda', citaElemento: 'Yo sé curarla mejor que nadie aquí' };
   return json;
@@ -326,4 +331,42 @@ test('video: un bloqueo cierra la operación sin reintentar; sin imagen no se ar
   assert.equal(plano.operacion, undefined, 'se puede arrancar otro después de cambiar el plano');
   await assert.rejects(V.videoPlano({ proyectoId: 'pabc12345', datos, escena: { id: 'e1', escenario: 'l1' }, plano: { id: 'e1-3' }, guardar: async () => {} }), /genérala primero/);
   assert.equal(llamadas.length, 1);
+});
+
+
+// ─── Géneros, subgéneros y ecchi en todo el recorrido ───
+import * as I from '../estudio/imagenes.mjs';
+
+test('cada bloque demuestra con una cita el género y cada subgénero elegido', () => {
+  const huellas = P.huellasPedidas(formulario);
+  assert.deepEqual(huellas.map(h => h.clave), ['genero', 'revenge', 'ecchi']);
+  assert.deepEqual(G.validarBloque(bloqueValido(), ctx({ huellas })).problemas, []);
+  const sinEcchi = bloqueValido();
+  sinEcchi.huellas = sinEcchi.huellas.filter(h => h.de !== 'ecchi');
+  assert.ok(G.validarBloque(sinEcchi, ctx({ huellas })).problemas.some(p => p.includes('fan service')));
+  const inventada = bloqueValido();
+  inventada.huellas[1].cita = 'una venganza que no aparece en el texto';
+  assert.ok(G.validarBloque(inventada, ctx({ huellas })).problemas.some(p => p.includes('Revenge')));
+  // Con «Para toda la familia» el ecchi no se pide.
+  assert.deepEqual(P.huellasPedidas({ ...formulario, publico: 'familia' }).map(h => h.clave), ['genero', 'revenge']);
+});
+
+test('el ecchi y el reparto atractivo llegan al universo, al guion y a cada imagen', () => {
+  const universo = P.promptUniverso(formulario, { titulo: 'x', concepto: 'y' }).mensaje;
+  assert.ok(universo.includes(P.REPARTO_ATRACTIVO));
+  assert.ok(universo.includes('MODIFICADOR ECCHI ACTIVO'));
+  assert.match(universo, /"sexo": "mujer \| hombre"/);
+  const familia = { ...formulario, publico: 'familia' };
+  assert.ok(!P.promptUniverso(familia, { titulo: 'x', concepto: 'y' }).mensaje.includes('MODIFICADOR ECCHI'));
+  assert.ok(P.contextoEleccion(formulario).includes(P.REGLA_DE_CAPAS));
+  const datos = { formulario, universo: universoValido(), biblia: {}, episodios: { 1: { bloques: [] } } };
+  assert.ok(P.promptBloque(datos, 1, 0, P.planDelEpisodio(formulario)).mensaje.includes('REGLAS ECCHI'));
+  const aspecto = I.direccionDeAspecto(formulario);
+  assert.ok(aspecto.includes(I.CASTING) && aspecto.includes(I.ASPECTO_GENERO.transmigracion) && aspecto.includes(I.ASPECTO_SUBGENERO.revenge) && aspecto.includes(I.ECCHI_VISUAL));
+  assert.ok(!I.direccionDeAspecto(familia).includes(I.ECCHI_VISUAL));
+  const ficha = I.promptFichaPersonaje({ nombre: 'Mei', sexo: 'mujer', edad: 24, rol: 'interés amoroso', appearance: 'long black hair, red silk dress' }, formulario);
+  assert.match(ficha, /strikingly beautiful adult woman/);
+  assert.match(ficha, /curvy, alluring figure/);
+  assert.ok(!I.promptFichaPersonaje({ nombre: 'Mei', sexo: 'mujer', edad: 24, appearance: 'x' }, familia).includes('curvy'));
+  assert.equal(G.validarUniverso({ ...universoCrudo, personajes: [{ ...universoCrudo.personajes[0], sexo: 'hombre' }, { ...universoCrudo.personajes[1], sexo: 'Mujer' }] }, formulario).universo.personajes[1].sexo, 'mujer');
 });

@@ -59,6 +59,13 @@ Mandan sobre la especificación donde la contradigan:
 - **La clave de la cuenta de servicio** la crea Cloud Shell (`./c`) y la
   escribe él mismo en Vercel. Nunca pasa por el chat ni por el código.
 - La aplicación está en `https://drama-ai-studio-amber.vercel.app`.
+- **Personajes atractivos y géneros que se notan:** las mujeres salen muy hermosas
+  y los hombres atractivos en todos los proyectos. Con ecchi, harem o harem
+  inverso (nunca con «familia»), las mujeres tienen figura voluptuosa y vestuario
+  que la realza desde la ficha, el guion teje momentos de fan service en la acción
+  y el desglose les da planos; siempre adultas y sin desnudez. El género y CADA
+  subgénero elegido viajan a cada imagen como dirección de aspecto, y cada bloque
+  del guion demuestra con una cita literal que todos se notan (si no, se reescribe).
 
 ## Construcción por fases
 
@@ -87,6 +94,7 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 - `api/video-inicio.js` + `api/video-estado.js` — Veo: arranca con la imagen del plano leída del bucket (4 s, audio nativo, MP4 directo al bucket) y consulta en el modelo que arrancó; URL firmada de 7 días.
 - `api/urls.js` — URLs firmadas (ver) y comprobación de existencia, solo dentro de la carpeta del proyecto.
 - `estudio/` — módulos del navegador; `index.html` y `entrar/` las páginas.
+  - `imagenes.mjs` también guarda el aspecto visual de cada género y subgénero, el casting atractivo y el ecchi visual (`direccionDeAspecto`).
   - `videos.mjs` (prompt de video por bloques literales en orden, negativo como lista, operación guardada y reanudable).
   - `desglose.mjs` (director de fotografía: planos de acción/cobertura anclados al texto; director de arte: corrige sin borrar), `escenas.mjs` (pestaña Escenas).
   - `medios.mjs` (cola de imagen/video: esperas 60/120/180/240/300, tandas que saltan lo hecho), `imagenes.mjs` (prompts de imagen en inglés), `personajes.mjs` (pestaña Personajes).

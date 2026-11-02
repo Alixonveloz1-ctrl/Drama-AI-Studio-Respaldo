@@ -41,9 +41,9 @@ export const GUIAS_GENERO = {
 export const GUIAS_SUBGENERO = {
   psicologico: 'Psicológico: mente, traumas y percepción alterada.',
   romance: 'Romance: tensión romántica real entre personajes.',
-  ecchi: 'Ecchi: tensión sugerente entre adultos cuando la escena lo pide; nada explícito.',
-  harem: 'Harem: protagonista masculino con tres o más mujeres interesadas en él.',
-  harem_inverso: 'Harem inverso: protagonista femenina con tres o más hombres interesados en ella.',
+  ecchi: 'Ecchi: fan service para adultos: mujeres muy atractivas, ropa sugerente y situaciones comprometedoras que nacen de la trama (ver REGLAS ECCHI); nada explícito.',
+  harem: 'Harem: protagonista masculino con tres o más mujeres atractivas interesadas en él, que compiten por su atención; siempre con fan service adulto.',
+  harem_inverso: 'Harem inverso: protagonista femenina con tres o más hombres atractivos interesados en ella, que compiten por su atención; siempre con fan service adulto.',
   comedia: 'Comedia: humor nacido de la situación y de los personajes, con malentendidos reales.',
   dark: 'Oscuro: temas duros sin suavizar y consecuencias reales.',
   gore: 'Violento: violencia explícita y heridas con peso.',
@@ -73,6 +73,31 @@ export const GUIAS_PUBLICO = {
 
 // ─── Reglas fijas ───
 export const REGLA_ADULTOS = 'REGLA OBLIGATORIA: TODOS los personajes son adultos (18 años o más). Si el subgénero «Escolar» está activo, el entorno es una universidad o academia de adultos, nunca secundaria. Esta regla anula cualquier otra lectura y es obligatoria con contenido sugerente o harem.';
+
+// Ecchi, harem y harem inverso llevan siempre fan service adulto (regla del
+// estudio de anime). Con «Para toda la familia» quedan desactivados.
+export function esEcchi(formulario) {
+  return subgenerosEfectivos(formulario).some(s => ['ecchi', 'harem', 'harem_inverso'].includes(s));
+}
+
+// Del estudio de anime: un subgénero es una CAPA sobre el género, nunca lo sustituye.
+export const REGLA_DE_CAPAS = 'REGLA DE CAPAS: cada subgénero seleccionado se tiene que NOTAR de verdad en la historia, y todos a la vez; ninguno es decorativo. Los subgéneros modifican el género principal, nunca lo sustituyen: si uno parece pedir lo contrario, gana el género principal y el subgénero se aplica dentro de sus reglas.';
+
+// Decisión del dueño: las mujeres salen hermosas y los hombres atractivos,
+// como en los dramas asiáticos de gran producción.
+export const REPARTO_ATRACTIVO = 'REPARTO CON EL ATRACTIVO DE UN DRAMA ASIÁTICO DE GRAN PRODUCCIÓN: las mujeres adultas son muy hermosas (rostro bello y armonioso, piel impecable, figura esbelta y atractiva, bien arregladas según su época y su oficio) y los hombres principales son atractivos. La belleza se mantiene aunque el personaje sea pobre o esté en apuros: el vestuario cuenta su situación, no la cara.';
+
+export const DISENO_ECCHI = `MODIFICADOR ECCHI ACTIVO — DISEÑO ADULTO DE LOS PERSONAJES:
+- Todos son adultos (18+) y se ven claramente adultos. Nunca secundaria ni uniformes asociados a menores.
+- Las mujeres tienen una figura muy atractiva y voluptuosa, cada una con su propio tipo y rasgos reconocibles (no clones de la misma figura).
+- Su vestuario habitual realza la figura dentro de su época, su oficio y su estatus: ajustado, con escote o aberturas, telas que se pegan al cuerpo. Escríbelo en "aspecto" y en "appearance".
+- En "appearance" (inglés) usa palabras que el generador de imagen acepta: "stunningly beautiful", "curvy figure", "form-fitting", "low neckline", "high slit". Nunca desnudez ni partes íntimas.`;
+
+export const REGLAS_ECCHI_GUION = `REGLAS ECCHI (contenido para adultos; se COMBINA con el género principal, no lo reemplaza):
+- Teje momentos reales de fan service donde la escena lo permita, con variedad entre ellos: caída accidental encima de alguien, ropa mojada tras la lluvia o el agua, cambio de ropa interrumpido, toalla que casi cae, ropa ajustada de trabajo o de deporte, inclinarse sin darse cuenta, proximidad incómoda en un sitio estrecho, baño termal, ropa de dormir.
+- El momento se VE: escríbelo en "accion" (lo que se ve al empezar la escena) con un hecho físico concreto. El diálogo no lo describe ni lo señala: reacciona a él (vergüenza, provocación, celos).
+- Prohibido el inventario de anatomía y los adjetivos metidos a empujones: suena forzado y hace que el generador rechace el plano.
+- Sin desnudez explícita ni partes íntimas.`;
 
 export const CONTRATO_FIDELIDAD = 'CONTRATO DE FIDELIDAD: el género principal y los subgéneros seleccionados son la ÚNICA fuente de tropos y mecánicas. Lo característico de subgéneros NO seleccionados no existe en esta historia. Nadie puede cambiar el género: el trabajo es que ESE género se sienta excelente, no reinterpretarlo ni suavizarlo.';
 
@@ -125,7 +150,7 @@ ${GUIAS_GENERO[formulario.genero] || ''}
 ${subs.map(s => '- ' + (GUIAS_SUBGENERO[s] || s)).join('\n')}
 
 ${CONTRATO_FIDELIDAD}
-${REGLA_ADULTOS}
+${subs.length ? REGLA_DE_CAPAS + '\n' : ''}${esEcchi(formulario) ? 'CONTENIDO ECCHI PARA ADULTOS ACTIVO: hay fan service visible en la historia, con mujeres muy atractivas y situaciones sugerentes que nacen de la trama; nada explícito.\n' : ''}${REGLA_ADULTOS}
 SISTEMA: ${obligatorio ? 'esta historia TIENE Sistema (pantallas, notificaciones, misiones y recompensas; su voz en off es la única permitida).'
     : permitido ? 'el concepto del dueño menciona un sistema: decide si la historia lo tiene según ese concepto.'
     : 'esta historia NO tiene Sistema: no existen pantallas, niveles, puntos, misiones ni notificaciones.'}
@@ -165,7 +190,9 @@ Concepto: ${idea.concepto}
 
 ${ANATOMIA_FORMATO}
 
-Desarrolla el universo de esa idea. Personajes: entre 3 y 7 recurrentes, todos adultos, con aspecto concreto y filmable (rostro, pelo exacto con su largo y peinado, complexión, ropa habitual); escribe el aspecto en español y también en inglés para el equipo de imagen. Escenarios: entre 3 y 6 lugares donde ocurrirá la historia; la PRIMERA frase de cada descripción dice si es interior o exterior.
+Desarrolla el universo de esa idea. Personajes: entre 3 y 7 recurrentes, todos adultos, con aspecto concreto y filmable (rostro, pelo exacto con su largo y peinado, complexión, ropa habitual); escribe el aspecto en español y también en inglés para el equipo de imagen.
+${REPARTO_ATRACTIVO}
+${esEcchi(formulario) ? DISENO_ECCHI + '\n' : ''}El vestuario y el aspecto también reflejan el género y CADA subgénero elegido (un médico parece médico, una idol parece idol, un mafioso parece mafioso). Escenarios: entre 3 y 6 lugares donde ocurrirá la historia; la PRIMERA frase de cada descripción dice si es interior o exterior.
 
 Devuelve JSON:
 {
@@ -177,7 +204,7 @@ Devuelve JSON:
   "ventaja": "lo que hace especial al protagonista (el Sistema, la ventaja, el recurso imposible); aparecerá en los primeros 30 segundos",
   "tieneSistema": true o false,
   "sistema": {"nombre": "nombre del Sistema", "reglaDelJuego": "la regla que anuncia en su primer panel", "cuentaAtras": "plazo si lo hay, o vacío"} o null,
-  "personajes": [{"id": "c1", "nombre": "…", "edad": 25, "rol": "protagonista | antagonista | aliado | interés amoroso | secundario", "aspecto": "en español", "appearance": "the same in English", "personalidad": "…", "formaDeHablar": "…"}],
+  "personajes": [{"id": "c1", "nombre": "…", "sexo": "mujer | hombre", "edad": 25, "rol": "protagonista | antagonista | aliado | interés amoroso | secundario", "aspecto": "en español", "appearance": "the same in English", "personalidad": "…", "formaDeHablar": "…"}],
   "escenarios": [{"id": "l1", "nombre": "…", "interior": true, "descripcion": "Interior. …", "description": "the same in English"}]
 }
 El primer personaje es el protagonista.`,
@@ -330,6 +357,15 @@ function canonCompacto(datos, numero) {
   return lineas.join('\n');
 }
 
+// Lo que cada bloque tiene que demostrar con una cita: el género y cada subgénero.
+export function huellasPedidas(formulario) {
+  const lista = [{ clave: 'genero', etiqueta: `el género «${etiqueta(GENEROS, formulario.genero).split(' — ')[0]}»` }];
+  for (const s of subgenerosEfectivos(formulario)) {
+    lista.push({ clave: s, etiqueta: s === 'ecchi' ? 'un momento de fan service (ecchi)' : `el subgénero «${etiqueta(SUBGENEROS, s)}»` });
+  }
+  return lista;
+}
+
 export function promptBloque(datos, numero, indice, plan, extra = '') {
   const f = datos.formulario;
   const u = datos.universo;
@@ -351,7 +387,7 @@ ${nota ? `\nNOTA DEL DIRECTOR PARA ESTE EPISODIO:\nObjetivo: ${nota.objetivo}\nC
 ${ANATOMIA_FORMATO}
 
 ${REGLAS_ESCRITURA}
-${canon ? `\n═══ GUION YA ESCRITO (canon inmediato: continúa desde aquí, no lo repitas ni lo resumas) ═══\n${canon}\n═══ FIN DEL GUION YA ESCRITO ═══\n` : ''}
+${esEcchi(f) ? '\n' + REGLAS_ECCHI_GUION + '\n' : ''}${canon ? `\n═══ GUION YA ESCRITO (canon inmediato: continúa desde aquí, no lo repitas ni lo resumas) ═══\n${canon}\n═══ FIN DEL GUION YA ESCRITO ═══\n` : ''}
 ESCRIBE AHORA: ${textoFase(pieza.fase, f.cierre)}
 ${pieza.parte ? `Este es un TROZO (${pieza.parte}) de esa fase: escribe solo esa parte y deja la historia lista para seguir.` : ''}
 - Unas ${pieza.palabras} palabras habladas en total (diálogo, pensamiento${u.tieneSistema ? ' y Sistema' : ''}). MÍNIMO ${Math.ceil(pieza.palabras * 0.9)}: un bloque más corto se rechaza.
@@ -368,9 +404,11 @@ Devuelve JSON:
 {
   "escenas": [{"titulo": "…", "escenario": "l1", "personajes": ["c1"], "accion": "…", "lineas": [{"tipo": ${tipos}, "personaje": "c1", "texto": "lo que se oye"}]}],
   "ciclos": [{"problema": "…", "solucion": "…", "reaccion": "…", "recompensa": "…", "citaProblema": "6 a 20 palabras COPIADAS LITERALMENTE de las líneas", "citaReaccion": "…", "citaRecompensa": "…"}],
+  "huellas": [${huellasPedidas(f).map(h => `{"de": "${h.clave}", "cita": "4 a 20 palabras COPIADAS LITERALMENTE de las líneas o de la acción donde se nota ${h.etiqueta}"}`).join(', ')}],
   ${esApertura ? '"apertura": {"citaConflicto": "6 a 20 palabras literales del conflicto inicial", "citaElemento": "6 a 20 palabras literales donde aparece el elemento especial"},\n  ' : ''}"resumen": "2 o 3 frases con lo que pasa en este bloque"
 }
-Las citas se copian EXACTAMENTE de los textos de "lineas", en el mismo orden en que ocurren.`,
+Las citas se copian EXACTAMENTE de los textos de "lineas", en el mismo orden en que ocurren. Las de "huellas" pueden salir también de "accion".
+"huellas" demuestra que el género y CADA subgénero elegido se notan en ESTE bloque: un bloque donde alguno no se nota se rechaza.`,
     temperatura: 0.75,
   };
 }

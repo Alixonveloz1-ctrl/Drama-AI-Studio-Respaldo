@@ -20,7 +20,8 @@
 // ════════════════════════════════════════════════════════════════
 import { pedirTexto, parsearJSON } from './texto.mjs';
 import { contarPalabras, normalizar } from './guion.mjs';
-import { contextoEleccion, segundosDe } from './prompts.mjs';
+import { contextoEleccion, segundosDe, esEcchi } from './prompts.mjs';
+import { direccionDeAspecto } from './imagenes.mjs';
 
 const POR_LLAMADA = 5;          // escenas como mucho por petición
 const PLANOS_POR_LLAMADA = 24;  // y planos mínimos sumados: la respuesta tiene que caber en el tiempo
@@ -99,6 +100,9 @@ export function promptDesglose(datos, escenas, extra = '') {
 ${fichaVisual(u)}
 
 DIRECCIÓN VISUAL DE LA SERIE: ${datos.biblia?.direccionVisual || ''}
+ASPECTO DEL GÉNERO Y DE CADA SUBGÉNERO (obligatorio en los prompts; todos a la vez): ${direccionDeAspecto(datos.formulario)}
+${esEcchi(datos.formulario) ? `FAN SERVICE (ecchi adulto): cuando la escena tiene un momento sugerente (está en su "accion" o en lo que se dice), dale al menos un plano que lo muestre con claridad: encuadre que realza la figura, ropa ajustada o mojada, pose atractiva, ángulo sugerente. Las mujeres siempre se describen hermosas y con su vestuario ajustado. Sin desnudez ni partes íntimas, y sin palabras que el filtro bloquee.
+` : ''}
 RITMO DE MONTAJE: ${datos.biblia?.ritmoMontaje || ''}
 Formato de imagen: ${datos.formulario.formato === '16:9' ? '16:9 horizontal' : '9:16 vertical: encuadres verticales, personajes centrados, poco aire lateral'}.
 

@@ -10,7 +10,8 @@
 //   3. Cada FICHA DE PERSONAJE seguida de su contrato 10.2. Sin esa línea el
 //      modelo copia el encuadre de la ficha en vez de la identidad.
 //   4. La referencia del ESCENARIO, si existe.
-//   5. Las reglas fijas y la escena.
+//   5. Las reglas fijas, la dirección de aspecto del proyecto (casting
+//      atractivo, género y CADA subgénero elegido, ecchi) y la escena.
 // Las referencias se leen del bucket aquí mismo. Si una ficha de personaje no
 // se puede adjuntar, NO se genera: ninguna imagen sale en silencio sin su
 // identidad (sección 12).
@@ -36,7 +37,7 @@ const CONTRATO_CONTINUIDAD = `This reference is the immediately preceding physic
 
 const CONTRATO_ESCENARIO = 'LOCATION REFERENCE above: this is the place where the scene happens. Keep its architecture, materials, palette and layout. Do not copy its framing; compose the shot the scene text asks for.';
 
-function reglas(nombres, formato, ecchi) {
+function reglas(nombres, formato, ecchi, direccion) {
   return `${nombres.length ? `Character references provided: ${nombres.join(', ')}.\n\n` : ''}MANDATORY RULES:
 1. ABSOLUTELY NO TEXT: no letters, words, numbers, watermarks, captions, subtitles, readable signage, logos or signatures.
 2. Show EVERY character named in the scene and nobody else beyond those mentioned.
@@ -46,7 +47,10 @@ function reglas(nombres, formato, ecchi) {
 7. Format: ${formato === '16:9' ? '16:9 horizontal widescreen' : '9:16 vertical'} frame.
 8. People integrated into the environment at true real-world scale, feet grounded, sharing the perspective and light of the place.
 9. LITERAL STAGING ONLY: a figure of speech about a feeling becomes an expression or a posture, never a special effect (no glowing eyes, no energy, no floating symbols). Real supernatural events stated as physically happening are allowed.${ecchi ? `
-- Every character is an ADULT (18+). Fan-service is SCENE-DRIVEN, not permanent: if the current scene describes an adult suggestive beat, render it confidently through pose, framing and expression while staying non-explicit; if the beat is grief, combat, exposition or ordinary conversation, do NOT force cleavage, blushing, tight clothing or suggestive poses.` : ''}`;
+10. ADULT ECCHI PROJECT: every character is an ADULT (18+) and clearly looks adult. Adult women keep their alluring figure and their figure-flattering wardrobe in every shot — it is part of their design. When the current scene describes a suggestive beat, render it confidently through pose, framing, wardrobe and expression; in grief or combat beats the emotion of the scene leads and no extra posing is added. Never nudity, never intimate parts.` : ''}${direccion ? `
+
+PROJECT LOOK (chosen by the owner — apply all of it):
+${direccion}` : ''}`;
 }
 
 const sinAcceso = m => /was not found or your project does not have access|publisher model .*not found/i.test(String(m || ''));
@@ -139,7 +143,8 @@ module.exports = puerta({ metodos: ['POST'] }, async (req, { google }) => {
       }
     }
     if (presupuesto < 0) throw new ErrorEstudio('Las fichas de los personajes de este plano pesan demasiado para enviarlas juntas. No se generó; prueba con menos personajes en el plano.', { estado: 413, tipo: 'peticion' });
-    partes.push({ text: `${reglas(personajes.map(p => p.nombre), formato, b.ecchi === true)}\n\nScene to show:\n${limpiarPrompt(prompt)}` });
+    const direccion = typeof b.direccion === 'string' ? limpiarPrompt(b.direccion).slice(0, 2500) : '';
+    partes.push({ text: `${reglas(personajes.map(p => p.nombre), formato, b.ecchi === true, direccion)}\n\nScene to show:\n${limpiarPrompt(prompt)}` });
   }
 
   // Modelo global: una sola llamada. Regional: rotación ante cuota.

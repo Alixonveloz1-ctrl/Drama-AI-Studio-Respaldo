@@ -62,6 +62,7 @@ export function validarUniverso(json, formulario) {
   for (const campo of ['titulo', 'gancho', 'premisa', 'mundo', 'ventaja']) if (!String(u[campo] || '').trim()) problemas.push(`falta «${campo}»`);
   const personajes = (Array.isArray(u.personajes) ? u.personajes : []).map((p, i) => ({
     id: 'c' + (i + 1), nombre: String(p?.nombre || '').trim(), edad: Number(p?.edad), rol: String(p?.rol || '').trim(),
+    sexo: /^(mujer|femenin|female|woman)/i.test(String(p?.sexo || '')) ? 'mujer' : /^(hombre|masculin|male|man)/i.test(String(p?.sexo || '')) ? 'hombre' : '',
     aspecto: String(p?.aspecto || '').trim(), appearance: String(p?.appearance || '').trim(),
     personalidad: String(p?.personalidad || '').trim(), formaDeHablar: String(p?.formaDeHablar || '').trim(),
   }));
@@ -117,7 +118,7 @@ export function validarNota(json) {
 // ─── Bloque del guion ───
 export function validarBloque(json, ctx) {
   const problemas = [];
-  const { universo, minimoPalabras, ciclos: ciclosMinimos, esApertura } = ctx;
+  const { universo, minimoPalabras, ciclos: ciclosMinimos, esApertura, huellas: huellasPedidas = [] } = ctx;
   const ids = new Set(universo.personajes.map(p => p.id));
   const lugares = new Set(universo.escenarios.map(e => e.id));
   const protagonista = universo.personajes[0]?.id;
@@ -193,6 +194,19 @@ export function validarBloque(json, ctx) {
     problemas.push(`solo ${demostrados.length} ciclo(s) completo(s) demostrados con citas literales en orden; hacen falta ${ciclosMinimos}`);
   }
 
+  // El género y cada subgénero tienen que notarse en el bloque: se demuestra
+  // con una cita literal de las líneas o de lo que se ve.
+  const conAccion = normalizar(texto + ' ' + escenas.map(e => e.accion).join(' '));
+  const huellasCrudas = Array.isArray(json?.huellas) ? json.huellas : [];
+  const huellas = [];
+  const faltan = [];
+  for (const h of huellasPedidas) {
+    const dada = huellasCrudas.find(x => String(x?.de || '') === h.clave && citaValida(String(x?.cita || '')) && conAccion.includes(normalizar(x.cita)));
+    if (dada) huellas.push({ de: h.clave, cita: String(dada.cita) });
+    else faltan.push(h.etiqueta);
+  }
+  if (faltan.length) problemas.push(`no se nota ${faltan.join(', ')} (falta su cita literal en "huellas"); cada elección del dueño tiene que verse en el bloque`);
+
   if (esApertura) {
     const a = json?.apertura || {};
     const posicionEnPalabras = cita => {
@@ -220,7 +234,7 @@ export function validarBloque(json, ctx) {
 
   return {
     problemas,
-    bloque: { escenas, ciclos: demostrados, apertura: esApertura ? json?.apertura : undefined, resumen: String(json?.resumen || '').trim(), palabras },
+    bloque: { escenas, ciclos: demostrados, huellas, apertura: esApertura ? json?.apertura : undefined, resumen: String(json?.resumen || '').trim(), palabras },
   };
 }
 
@@ -298,7 +312,7 @@ export async function escribirGuion(datos, numero, opciones) {
     const etiqueta = `Escribiendo el bloque ${i + 1} de ${ep.plan.length}`;
     try {
       const { bloque } = await pedirValidado(P.promptBloque(datos, numero, i, ep.plan),
-        json => validarBloque(json, { universo: datos.universo, minimoPalabras: Math.ceil(pieza.palabras * 0.9), ciclos: pieza.ciclos, esApertura: i === 0 }),
+        json => validarBloque(json, { universo: datos.universo, minimoPalabras: Math.ceil(pieza.palabras * 0.9), ciclos: pieza.ciclos, esApertura: i === 0, huellas: P.huellasPedidas(datos.formulario) }),
         { control, aviso, etiqueta });
       for (const escena of bloque.escenas) escena.id = 'e' + (++escenaNum);
       ep.bloques.push(bloque);

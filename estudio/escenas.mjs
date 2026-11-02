@@ -19,7 +19,8 @@ import { desglosar, revisar, escenasDelEpisodio, textoEscena } from './desglose.
 import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
 import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
 import { crearControl } from './texto.mjs';
-import { segundosDe } from './prompts.mjs';
+import { segundosDe, esEcchi } from './prompts.mjs';
+import { direccionDeAspecto } from './imagenes.mjs';
 import { contarPalabras } from './guion.mjs';
 import { explicar } from './red.mjs';
 import { escapar, avisar, verImagen } from './interfaz.mjs';
@@ -156,7 +157,8 @@ async function imagenPlano(escena, indice, opciones) {
     personajes: personajes.map(x => ({ nombre: x.nombre, ruta: x.ruta })),
     continuidad: anterior?.imagen?.ruta || undefined,
     escenario: u.escenarios.find(x => x.id === escena.escenario)?.referencia?.ruta || undefined,
-    ecchi: (d.formulario.subgeneros || []).some(s => ['ecchi', 'harem', 'harem_inverso'].includes(s)),
+    ecchi: esEcchi(d.formulario),
+    direccion: direccionDeAspecto(d.formulario),
   };
   const r = await pedirMedio('/api/imagen', cuerpo, opciones);
   recordarUrl(r.ruta, r.url);
