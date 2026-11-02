@@ -695,3 +695,163 @@ test('imagen: la tela nunca se transparenta y esa regla va al final, después de
   assert.ok(ultimo.lastIndexOf('FINAL CHECK') > ultimo.indexOf('Scene to show:'));
   assert.ok(!/\bnipples?\b/i.test(ultimo));
 });
+
+// ─── Voces, música, subtítulos y montaje ───
+const { pcmAWav, duracionWav } = require('../api/_lib/audio');
+const hojaLib = require('../api/_lib/hoja');
+const pedirA = (ruta, body, method = 'POST') => peticion({ method, url: ruta, headers: { cookie: acceso.COOKIE + '=' + token() }, body });
+function mundoGoogle(manejar) {
+  const subidos = {}, vistas = [];
+  google_responde = async (url, opciones = {}) => {
+    if (url === 'https://oauth2.googleapis.com/token') return new Response(JSON.stringify({ access_token: 'ya29.servicio', expires_in: 3600 }));
+    if (url.includes('/upload/storage/v1/')) { subidos[new URL(url).searchParams.get('name')] = Buffer.from(opciones.body).toString('utf8'); return new Response(JSON.stringify({ generation: '9' })); }
+    vistas.push({ url, cuerpo: opciones.body ? JSON.parse(opciones.body) : null });
+    return manejar(url, opciones);
+  };
+  return { subidos, vistas };
+}
+const WAV = pcmAWav(Buffer.alloc(48000 * 2)); // 2 s a 24 kHz
+
+test('audio: el PCM se envuelve en WAV y su duración se lee de la cabecera', () => {
+  assert.equal(duracionWav(WAV), 2);
+  assert.equal(duracionWav(Buffer.from('no es un wav')), null);
+});
+
+test('voz: las voces se piden a Google (con su género) y un tramo de dos hablantes va en UNA llamada', async () => {
+  conCuentaDeServicio();
+  process.env.GCS_OUTPUT_BUCKET = 'bucket-prueba';
+  const voz = require('../api/voz');
+  let { vistas } = mundoGoogle(url => url.startsWith('https://texttospeech.googleapis.com/v1/voices')
+    ? new Response(JSON.stringify({ voices: [{ name: 'es-US-Chirp3-HD-Kore', ssmlGender: 'FEMALE' }, { name: 'es-US-Chirp3-HD-Charon', ssmlGender: 'MALE' }, { name: 'es-US-Neural2-A', ssmlGender: 'FEMALE' }] }))
+    : new Response('{}', { status: 500 }));
+  const lista = respuesta();
+  await voz(pedirA('/api/voz', null, 'GET'), lista);
+  assert.equal(lista.statusCode, 200, JSON.stringify(lista.valor));
+  assert.deepEqual(lista.valor.voces, [{ nombre: 'Charon', genero: 'hombre' }, { nombre: 'Kore', genero: 'mujer' }]);
+  const pcm = Buffer.alloc(24000 * 2 * 3).toString('base64');
+  ({ vistas } = mundoGoogle(() => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;codec=pcm;rate=24000', data: pcm } }] } }] }))));
+  const salida = respuesta();
+  await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', registro: 'dramatica', hablantes: [{ voz: 'Charon' }, { voz: 'Kore' }],
+    lineas: [{ hablante: 0, texto: '¡Arrodíllate!' }, { hablante: 1, texto: 'Nunca.' }, { hablante: 0, texto: 'Ya verás.', pensamiento: true }] }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  assert.equal(salida.valor.segundos, 3);
+  assert.equal(salida.valor.ruta, base + 'voz-e1-1.wav');
+  assert.equal(vistas.length, 1, 'los dos hablantes en la misma llamada');
+  assert.match(vistas[0].url, /\/v1beta1\/projects\/.*\/models\/gemini-2\.5-flash-preview-tts:generateContent$/);
+  const cuerpo = vistas[0].cuerpo;
+  assert.deepEqual(cuerpo.generationConfig.speechConfig.multiSpeakerVoiceConfig.speakerVoiceConfigs.map(s => s.voiceConfig.prebuiltVoiceConfig.voiceName), ['Charon', 'Kore']);
+  const texto = cuerpo.contents[0].parts[0].text;
+  assert.ok(texto.startsWith(voz.instruccion('dramatica')), 'la misma instrucción de estilo en todas las llamadas');
+  assert.match(texto, /Speaker1: ¡Arrodíllate!\nSpeaker2: Nunca\.\nSpeaker1: \(inner thought\) Ya verás\./);
+  const tres = respuesta();
+  await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', hablantes: [{ voz: 'Charon' }, { voz: 'Kore' }, { voz: 'Puck' }], lineas: [{ texto: 'x' }] }), tres);
+  assert.equal(tres.statusCode, 400);
+});
+
+test('música: un brief en español se rechaza antes de llamar a Lyria; en inglés se guarda en el bucket', async () => {
+  conCuentaDeServicio();
+  process.env.GCS_OUTPUT_BUCKET = 'bucket-prueba';
+  const musica = require('../api/musica');
+  const { vistas } = mundoGoogle(() => new Response(JSON.stringify({ predictions: [{ bytesBase64Encoded: WAV.toString('base64'), mimeType: 'audio/wav' }] })));
+  const mal = respuesta();
+  await musica(pedirA('/api/musica', { proyecto: 'pimagen0001', clave: 'musica-ep1-1', brief: 'Música épica con tambores y guzheng para la revancha del héroe.' }), mal);
+  assert.equal(mal.statusCode, 400);
+  assert.equal(vistas.length, 0);
+  const bien = respuesta();
+  await musica(pedirA('/api/musica', { proyecto: 'pimagen0001', clave: 'musica-ep1-1', brief: 'Tense cinematic score with taiko drums, guzheng and low strings, building to a triumphant brass fanfare.' }), bien);
+  assert.equal(bien.statusCode, 200, JSON.stringify(bien.valor));
+  assert.equal(bien.valor.segundos, 2);
+  assert.match(vistas[0].url, /us-central1-aiplatform.*lyria-002:predict$/);
+  assert.match(vistas[0].cuerpo.instances[0].negative_prompt, /vocals, singing/);
+});
+
+test('transcripción: lee la voz del bucket y devuelve los tiempos de cada palabra', async () => {
+  conCuentaDeServicio();
+  const transcripcion = require('../api/transcripcion');
+  const { vistas } = mundoGoogle(url => url.includes('alt=media')
+    ? new Response(WAV, { headers: { 'content-type': 'audio/wav' } })
+    : new Response(JSON.stringify({ results: [{ alternatives: [{ words: [{ word: 'arrodíllate', startTime: '0.2s', endTime: '0.9s' }, { word: 'inútil', startTime: { seconds: 1, nanos: 100000000 }, endTime: '1.6s' }] }] }] })));
+  const salida = respuesta();
+  await transcripcion(pedirA('/api/transcripcion', { proyecto: 'pimagen0001', ruta: base + 'voz-e1-1.wav' }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  assert.deepEqual(salida.valor.palabras, [{ palabra: 'arrodíllate', inicio: 0.2, fin: 0.9 }, { palabra: 'inútil', inicio: 1.1, fin: 1.6 }]);
+  const stt = vistas.find(v => v.url.includes('speech:recognize')).cuerpo;
+  assert.equal(stt.config.model, 'latest_long');
+  assert.equal(stt.config.languageCode, 'es-US');
+  assert.equal(stt.config.enableWordTimeOffsets, true);
+  const ajena = respuesta();
+  await transcripcion(pedirA('/api/transcripcion', { proyecto: 'pimagen0001', ruta: 'drama-studio/proyectos/potro00001/medios/x.wav' }), ajena);
+  assert.equal(ajena.statusCode, 400);
+});
+
+const hojaPrueba = () => ({ modo: 'video', episodio: 1, formato: '9:16',
+  planos: [{ tipo: 'video', ruta: base + 'plano-e1-1.mp4', duracion: 4, sistema: 'Misión cumplida. $(rm -rf /) `x`' }, { tipo: 'imagen', ruta: base + 'plano-e1-2.png', duracion: 2.5 }],
+  voces: [{ ruta: base + 'voz-e1-1.wav', inicio: 0.35 }], musica: [{ ruta: base + 'musica-ep1-1.wav', inicio: 0, duracion: 6.5 }],
+  subtitulos: [{ inicio: 0.35, fin: 2, texto: "Hola'; rm -rf / #" }] });
+
+test('hoja de montaje: el guion lo escribe el servidor, es bash válido y ningún texto del navegador entra en él', () => {
+  const h = hojaLib.validar('pimagen0001', hojaPrueba());
+  const { script, descargas, textos, archivo } = hojaLib.construir(h, { bucket: 'b', carpeta: 'drama-studio/proyectos/pimagen0001/montaje/video-ep01' });
+  assert.equal(archivo, 'episodio-01.mp4');
+  assert.ok(!script.includes('rm -rf'), 'los textos viajan como archivos, no dentro del guion');
+  assert.ok(textos.some(([r, c]) => r.endsWith('/t/s0001.txt') && c.includes('Misión cumplida.')));
+  assert.ok(textos.some(([r, c]) => r.endsWith('/episodio.srt') && c.includes('00:00:00,350 --> 00:00:02,000')));
+  assert.deepEqual(descargas[0], ['gs://b/' + base + 'plano-e1-1.mp4', 'm/p0001.mp4']);
+  assert.match(script, /segmento_video m\/p0001\.mp4 seg\/s0001\.mp4 4\.000 t\/s0001\.txt/);
+  assert.match(script, /segmento_imagen m\/p0002\.png seg\/s0002\.mp4 2\.500 1 -/);
+  assert.match(script, /setpts=\$\{f\}\*PTS,tpad=stop_mode=clone/, 'se retima, no se repite ni se recorta');
+  assert.match(script, /x=d\/r; if \(x>3\) x=3/, 'ralentizar como mucho 3×');
+  assert.match(script, /loudnorm=I=-16/);
+  assert.match(script, /subtitles=episodio\.srt/);
+  const ruta = path.join(require('node:os').tmpdir(), 'montar-prueba.sh');
+  fs.writeFileSync(ruta, script);
+  assert.equal(require('node:child_process').spawnSync('bash', ['-n', ruta]).status, 0, 'el guion es un shell válido');
+  for (const [romper, que] of [[x => { x.planos[0].ruta = 'drama-studio/proyectos/potro00001/medios/a.mp4'; }, 'ruta ajena'], [x => { x.planos[0].duracion = -1; }, 'duración'], [x => { x.planos = []; }, 'sin planos']]) {
+    const malo = hojaPrueba(); romper(malo);
+    assert.throws(() => hojaLib.validar('pimagen0001', malo), undefined, que);
+  }
+  const zip = hojaLib.validar('pimagen0001', { modo: 'zip', episodio: 2, archivos: [{ ruta: base + 'plano-e1-2.png', nombre: 'imagenes/escena-01-plano-02.png' }], textos: [{ nombre: 'guion.txt', contenido: 'x' }] });
+  assert.equal(hojaLib.construir(zip, { bucket: 'b', carpeta: 'c' }).archivo, 'material-ep02.zip');
+  assert.throws(() => hojaLib.validar('pimagen0001', { modo: 'zip', episodio: 1, archivos: [{ ruta: base + 'a.png', nombre: '../../etc/passwd' }] }));
+});
+
+test('montaje: sube el trabajo, lanza el montador con su carpeta y salida, y consulta hasta tenerlo; un fallo trae su motivo', async () => {
+  conCuentaDeServicio();
+  process.env.GCS_OUTPUT_BUCKET = 'bucket-prueba';
+  const montaje = require('../api/montaje');
+  const OP = 'projects/proyecto-prueba/locations/us-central1/operations/abc-123';
+  let { subidos, vistas } = mundoGoogle(url => url.includes(':run') ? new Response(JSON.stringify({ name: OP })) : new Response('{}', { status: 500 }));
+  const inicio = respuesta();
+  await montaje(pedirA('/api/montaje', { accion: 'iniciar', proyecto: 'pimagen0001', hoja: hojaPrueba() }), inicio);
+  assert.equal(inicio.statusCode, 200, JSON.stringify(inicio.valor));
+  assert.equal(inicio.valor.operacion, OP);
+  assert.equal(inicio.valor.ruta, base + 'episodio-01.mp4');
+  const carpeta = 'drama-studio/proyectos/pimagen0001/montaje/video-ep01';
+  assert.equal(inicio.valor.carpeta, carpeta);
+  assert.ok(subidos[carpeta + '/montar.sh'].startsWith('#!/usr/bin/env bash'));
+  assert.ok(subidos[carpeta + '/descargas.txt'].endsWith('\n'), 'la lista termina en salto de línea');
+  assert.equal(subidos[carpeta + '/error.txt'], '');
+  const lanzar = vistas.find(v => v.url.includes(':run'));
+  assert.match(lanzar.url, /\/locations\/us-central1\/jobs\/drama-studio-montage:run$/);
+  const env = Object.fromEntries(lanzar.cuerpo.overrides.containerOverrides[0].env.map(e => [e.name, e.value]));
+  assert.deepEqual(env, { TRABAJO: 'gs://bucket-prueba/' + carpeta, SALIDA: 'gs://bucket-prueba/' + base + 'episodio-01.mp4', ARCHIVO: 'episodio-01.mp4' });
+  // Consulta: aún no; luego listo con URL de descarga; luego un fallo con su motivo.
+  for (const [respuestaRun, esperado] of [[{ done: false }, 'nolisto'], [{ done: true, response: {} }, 'listo'], [{ done: true, error: { message: 'exit code 1' } }, 'fallo']]) {
+    mundoGoogle(url => url.startsWith('https://run.googleapis.com/v2/' + OP) ? new Response(JSON.stringify(respuestaRun)) : url.includes('error.txt') ? new Response('ffmpeg: no se pudo leer m/p0001.mp4') : new Response('{}', { status: 404 }));
+    const estado = respuesta();
+    await montaje(pedirA('/api/montaje', { accion: 'estado', proyecto: 'pimagen0001', operacion: OP, carpeta, ruta: base + 'episodio-01.mp4' }), estado);
+    if (esperado === 'nolisto') assert.equal(estado.valor.listo, false);
+    if (esperado === 'listo') { assert.equal(estado.valor.listo, true); assert.match(estado.valor.url, /response-content-disposition=/); }
+    if (esperado === 'fallo') { assert.equal(estado.statusCode, 502); assert.equal(estado.valor.tipo, 'montaje_fallo'); assert.match(estado.valor.detalleGoogle || estado.valor.error, /no se pudo leer/); }
+  }
+  // Sin montador desplegado: se dice que hay que ejecutar el instalador.
+  mundoGoogle(url => url.includes(':run') ? new Response(JSON.stringify({ error: { code: 404 } }), { status: 404 }) : new Response('{}'));
+  const sin = respuesta();
+  await montaje(pedirA('/api/montaje', { accion: 'iniciar', proyecto: 'pimagen0001', hoja: hojaPrueba() }), sin);
+  assert.equal(sin.statusCode, 502);
+  assert.match(sin.valor.error, /Ejecuta el instalador/);
+  // Una carpeta de otro proyecto no se consulta.
+  const otra = respuesta();
+  await montaje(pedirA('/api/montaje', { accion: 'estado', proyecto: 'pimagen0001', operacion: OP, carpeta: 'drama-studio/proyectos/potro00001/montaje/video-ep01', ruta: base + 'episodio-01.mp4' }), otra);
+  assert.equal(otra.statusCode, 400);
+});

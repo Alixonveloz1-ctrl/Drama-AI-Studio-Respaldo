@@ -32,6 +32,10 @@ APIS = [
     'serviceusage.googleapis.com',
     'firebase.googleapis.com',
     'identitytoolkit.googleapis.com',
+    # El montador del episodio final (Cloud Run Job con FFmpeg).
+    'run.googleapis.com',
+    'cloudbuild.googleapis.com',
+    'artifactregistry.googleapis.com',
 ]
 
 # Roles de la cuenta de servicio (sección 4.4). storage.admin porque el
@@ -40,6 +44,9 @@ ROLES = [
     'roles/aiplatform.user',
     'roles/storage.admin',
     'roles/serviceusage.serviceUsageConsumer',
+    # Lanzar el montador y consultar cómo va.
+    'roles/run.invoker',
+    'roles/run.viewer',
 ]
 
 

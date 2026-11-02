@@ -20,6 +20,8 @@ import { proyectoActual, guardar } from './proyectos.mjs';
 import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './medios.mjs';
 import { promptFichaPersonaje, promptVariante, direccionDeAspecto } from './imagenes.mjs';
 import { esEcchi } from './prompts.mjs';
+import { vocesDisponibles, asignarVoces } from './voces.mjs';
+import { escenasDelEpisodio } from './desglose.mjs';
 import { crearControl } from './texto.mjs';
 import { explicar } from './red.mjs';
 import { escapar, avisar, verImagen } from './interfaz.mjs';
@@ -33,6 +35,7 @@ let raiz = null;
 let ocupado = null;      // { donde, control, aviso }
 let ultimoError = null;  // { donde, texto }
 let fila = Promise.resolve();
+let voces = null;        // las voces que Google ofrece (se piden una vez)
 
 export { MODELOS as MODELOS_IMAGEN };
 
@@ -44,6 +47,18 @@ export function montarPersonajes(contenedor) {
   raiz = contenedor;
   raiz.addEventListener('click', alPulsar);
   raiz.addEventListener('change', evento => {
+    if (evento.target.matches('[data-voz]')) {
+      const d = proyectoActual()?.datos;
+      const p = d?.universo?.personajes.find(x => x.id === evento.target.dataset.voz);
+      if (!p) return;
+      p.voz = evento.target.value;
+      const ids = new Set([p.id, ...(d.universo.variantes || []).filter(v => v.madre === p.id).map(v => v.id)]);
+      for (const n of Object.keys(d.episodios || {})) {
+        for (const e of escenasDelEpisodio(d, Number(n))) if (e.voz && e.lineas.some(l => ids.has(l.personaje))) e.voz.obsoleta = true;
+      }
+      guardar().catch(e => avisar(explicar(e), 'error'));
+      return;
+    }
     if (evento.target.matches('[name="modeloImagen"]')) {
       const d = proyectoActual()?.datos;
       if (!d) return;
@@ -97,6 +112,7 @@ function pintarAhora() {
           <h2>${escapar(x.nombre)}</h2>
           <p class="nota">${escapar(x.rol)} · ${x.edad} años</p>
           <p class="corto">${escapar(x.aspecto)}</p>
+          ${voces ? `<label class="campo-linea">Voz<select data-voz="${x.id}">${voces.map(v => `<option value="${v.nombre}"${v.nombre === x.voz ? ' selected' : ''}>${v.nombre}${v.genero ? ' · ' + v.genero : ''}</option>`).join('')}</select></label>` : `<p class="nota">Voz: ${escapar(x.voz || 'se asigna sola')}</p>`}
         </div>
       </div>
       ${caja('p-' + x.id)}
@@ -127,6 +143,13 @@ function pintarAhora() {
   ${u.personajes.every(x => x.referencia) ? `<button type="button" class="btn ancho continuar" data-accion="continuar">Continuar: escenas</button>` : ''}`;
   raiz.querySelectorAll('[data-accion]').forEach(b => { if (ocupado && !b.dataset.libre) b.disabled = true; });
   cargarImagenes(raiz, p.id);
+  if (!voces) {
+    vocesDisponibles().then(lista => {
+      voces = lista;
+      if (asignarVoces(u, lista)) guardar().catch(() => {});
+      pintarPersonajes();
+    }).catch(() => { /* sin lista de voces: se ve la voz asignada en texto */ });
+  }
 }
 
 function aviso(texto) {

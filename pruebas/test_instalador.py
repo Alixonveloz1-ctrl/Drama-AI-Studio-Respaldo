@@ -53,6 +53,9 @@ class Mundo:
         self.despliegues = []
         self.cuerpos_vercel = []
         self.llamadas = []
+        self.trabajo = False
+        self.repositorio = False
+        self.construcciones = 0
 
     # ─── gcloud ───
     def gcloud(self, args):
@@ -110,6 +113,22 @@ class Mundo:
             return 0, '', ''
         if a[:4] == ['iam', 'service-accounts', 'keys', 'delete']:
             self.claves.remove(a[4])
+            return 0, '', ''
+        if a[:3] == ['run', 'jobs', 'describe']:
+            return (0, '{}', '') if self.trabajo else (1, '', 'NOT_FOUND: Job not found')
+        if a[:3] == ['artifacts', 'repositories', 'describe']:
+            return (0, '{}', '') if self.repositorio else (1, '', 'NOT_FOUND: Repository not found')
+        if a[:3] == ['artifacts', 'repositories', 'create']:
+            self.repositorio = True
+            return 0, '', ''
+        if a[:2] == ['builds', 'get-default-service-account']:
+            return 0, f'projects/{PROYECTO}/serviceAccounts/123-compute@developer.gserviceaccount.com', ''
+        if a[:2] == ['builds', 'submit']:
+            self.construcciones += 1
+            return 0, '', ''
+        if a[:3] == ['run', 'jobs', 'deploy']:
+            assert '--service-account' in a and '--max-retries' in a
+            self.trabajo = True
             return 0, '', ''
         raise AssertionError('gcloud inesperado: ' + texto)
 
@@ -285,6 +304,11 @@ class RecorridoCompleto(BaseInstalador):
         guardado = self.mundo.objetos[f'gs://{PROYECTO}-drama-studio/drama-studio/instalacion/estado.json']
         self.assertNotIn('PRIVATE KEY', guardado)
         self.assertEqual(len(self.mundo.despliegues), 1)
+        # El montador se construye y se despliega como trabajo de Cloud Run.
+        self.assertTrue(self.mundo.trabajo)
+        self.assertEqual(self.mundo.construcciones, 1)
+        roles = [c for c in self.mundo.llamadas if c[:3] == ['gcloud', 'projects', 'add-iam-policy-binding']]
+        self.assertTrue(any('--role=roles/run.invoker' in c for c in roles))
 
         # Segunda vez: nada que preguntar, ninguna clave nueva, nada que publicar.
         llamadas_antes = len(self.mundo.cuerpos_vercel)
@@ -294,6 +318,7 @@ class RecorridoCompleto(BaseInstalador):
         self.assertEqual(self.mundo.claves, ['clave1'])
         self.assertEqual(len(self.mundo.despliegues), 1)
         self.assertEqual(len(self.mundo.cuerpos_vercel), llamadas_antes)
+        self.assertEqual(self.mundo.construcciones, 1, 'el montador al día no se vuelve a construir')
         self.comprobar_sin_secretos(s2)
 
     def test_clave_perdida_crea_otra_y_retira_la_vieja_tras_publicar(self):

@@ -90,9 +90,9 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 3. Personajes, escenarios y sus referencias — **hecha** (fichas, variantes editando la madre, escenarios, lote).
 4. Escenas e imágenes: botón por plano, botón de lote y la cola con el manejo de cuotas — **hecha** (desglose del director de fotografía, revisión del director de arte cada 5 escenas, imagen por plano con continuidad).
 5. Videos: arranque, consulta y audio nativo sin voces — **hecha** (botón por plano, lote de los planos de acción, la operación de Veo se guarda y se sigue tras recargar).
-6. Voces, música y ambiente.
-7. Subtítulos alineados y montaje final en Cloud Run.
-8. Capa del Sistema, episodios encadenados y export ZIP.
+6. Voces y música (sin ambiente: lo pone Veo) — **hecha** (voz por escena en tramos de hasta dos hablantes, voces pedidas a Google y asignadas solas por sexo, registro común; música por acto con brief en inglés).
+7. Subtítulos alineados y montaje final en Cloud Run — **hecha** (alineación forzada con respaldo proporcional; hoja de montaje → guion de FFmpeg escrito por el servidor; montador genérico que crea el instalador; pestaña Exportar con un botón que hace lo que falte).
+8. Capa del Sistema, episodios encadenados y export ZIP — **hecha** (paneles del Sistema dibujados en el montaje, «Escribir el episodio N» que continúa la historia con ids de escena propios, ZIP con todo el material).
 
 ## Mapa del código
 
@@ -106,9 +106,15 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 - `api/proyectos.js` + `api/_lib/almacen.js` — proyectos en el bucket con versión (ifGenerationMatch), historial y 404 real.
 - `api/imagen.js` — contrato de estilo 9.1 primero, fichas con contrato 10.2 y continuidad 10.4 leídas del bucket en el servidor; guarda la imagen en el bucket y devuelve ruta + URL firmada. Bloqueo sin reintento.
 - `api/video-inicio.js` + `api/video-estado.js` — Veo: arranca con la imagen del plano leída del bucket (4 s, audio nativo, MP4 directo al bucket) y consulta en el modelo que arrancó; URL firmada de 7 días.
-- `api/urls.js` — URLs firmadas (ver) y comprobación de existencia, solo dentro de la carpeta del proyecto.
+- `api/voz.js` — GET: voces de Gemini que ofrece Google (de la lista Chirp 3 HD es-US, con su género); POST: un tramo de escena con 1 o 2 hablantes en una llamada, misma instrucción de estilo en todo el proyecto, WAV al bucket. Sin modelo de respaldo.
+- `api/musica.js` — Lyria: brief solo en inglés (se comprueba antes), WAV al bucket.
+- `api/transcripcion.js` — Speech-to-Text con tiempos por palabra (lee la voz del bucket).
+- `api/montaje.js` + `api/_lib/hoja.js` — valida la hoja de montaje (datos), escribe el guion de FFmpeg y la lista de descargas (ningún texto del navegador entra en el guion: subtítulos y paneles van como archivos), lanza el trabajo de Cloud Run y consulta; también el ZIP.
+- `montador/` — el contenedor genérico del montaje (FFmpeg, fuentes, zip). Lo construye y despliega el instalador (paso 5), solo si cambió.
+- `api/urls.js` — URLs firmadas (ver y descargar con nombre) y comprobación de existencia, solo dentro de la carpeta del proyecto.
 - `estudio/` — módulos del navegador; `index.html` y `entrar/` las páginas.
   - `imagenes.mjs` también guarda el aspecto visual de cada género y subgénero, el casting atractivo y el ecchi visual (`direccionDeAspecto`).
+  - `voces.mjs` (asignación de voces, tramos de dos hablantes, voz por escena), `musica.mjs` (actos y pistas), `subtitulos.mjs` (alineación y frases), `montaje.mjs` (hoja de montaje, reparto por peso, ZIP, operación reanudable), `exportar.mjs` (pestaña Exportar).
   - `videos.mjs` (prompt de video por bloques literales en orden, negativo como lista, operación guardada y reanudable).
   - `desglose.mjs` (director de fotografía: planos de acción/cobertura anclados al texto, con puesta en escena —quién está desde el principio, quién entra y sale—, encuadre, estado de cada persona presente y qué cambió; primer plano general con todos; todo validado antes de pagar imágenes. Director de arte: corrige sin borrar y vigila apariciones, desapariciones y objetos que se esfuman), `escenas.mjs` (pestaña Escenas; las escenas abiertas siguen abiertas; cada imagen lleva estado, fuera de cuadro y el plano general como mapa).
   - `medios.mjs` (cola de imagen/video: esperas 60/120/180/240/300, tandas que saltan lo hecho), `imagenes.mjs` (prompts de imagen en inglés), `personajes.mjs` (pestaña Personajes).

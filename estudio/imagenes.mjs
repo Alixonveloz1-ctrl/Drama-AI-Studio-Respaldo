@@ -77,10 +77,19 @@ export function direccionDeAspecto(formulario) {
   return partes.join(' ');
 }
 
+// Mujer u hombre. Los personajes creados antes de guardar el sexo se
+// reconocen por su aspecto (en inglés o en español); si no se sabe, ''.
+export function sexoDe(p) {
+  if (p?.sexo === 'mujer' || p?.sexo === 'hombre') return p.sexo;
+  const en = String(p?.appearance || ''), es = String(p?.aspecto || '');
+  if (/\b(woman|female|girl|lady|she|her)\b/i.test(en) || /\b(mujer|dama|señora|señorita|chica|muchacha|femenin\w*|ella)\b/i.test(es)) return 'mujer';
+  if (/\b(man|male|boy|gentleman|he|his|beard|bearded|moustache|mustache)\b/i.test(en) || /\b(hombre|varón|caballero|señor|chico|muchacho|masculin\w*|él|barba|barbudo|bigote)\b/i.test(es)) return 'hombre';
+  return '';
+}
+
 // Ficha maestra: UNA sola imagen limpia por personaje (sección 10.1).
 export function promptFichaPersonaje(p, formulario) {
-  // Los personajes creados antes de guardar el sexo se reconocen por su aspecto.
-  const mujer = p.sexo === 'mujer' || (!p.sexo && (/\b(woman|female|girl|lady|she|her)\b/i.test(p.appearance || '') || /\b(mujer|dama|señora|señorita|chica|muchacha|joven esbelta|femenin\w*|ella)\b/i.test(p.aspecto || '')));
+  const mujer = sexoDe(p) === 'mujer';
   const belleza = mujer
     ? `a stunningly beautiful adult woman with the idol-like look of a top K-drama or C-drama actress, ${p.edad} years old`
     : p.sexo === 'hombre' ? `a handsome adult man with the look of a K-drama or C-drama leading man, ${p.edad} years old` : `a ${p.edad}-year-old adult`;

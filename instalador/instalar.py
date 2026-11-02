@@ -23,10 +23,11 @@ import comun  # noqa: E402
 from comun import FalloInstalacion, Sistema, cargar_estado, guardar_estado, limpiar  # noqa: E402
 import nube  # noqa: E402
 import acceso  # noqa: E402
+import montador  # noqa: E402
 from publicar import Vercel, direccion_principal  # noqa: E402
 
 RAIZ = Path(__file__).resolve().parents[1]
-PASOS = 7
+PASOS = 8
 
 
 def paso(s, numero, titulo):
@@ -91,14 +92,19 @@ def instalar(s):
     estado['bucket'] = bucket
     guardar_estado(estado)
 
-    # ─── 5. Inicio de sesión ───
-    paso(s, 5, 'Inicio de sesión con Google (Firebase)')
+    # ─── 5. Montador ───
+    paso(s, 5, 'Montador del episodio final (Cloud Run)')
+    estado['montador'] = montador.preparar_montador(s, proyecto, correo_servicio, estado)
+    guardar_estado(estado)
+
+    # ─── 6. Inicio de sesión ───
+    paso(s, 6, 'Inicio de sesión con Google (Firebase)')
     firebase, app_id = acceso.preparar_firebase(s, proyecto, cuenta)
     estado['firebase'] = {'proyecto': firebase['projectId'], 'appId': app_id}
     guardar_estado(estado)
 
-    # ─── 6. Vercel ───
-    paso(s, 6, 'Vercel: variables y publicación')
+    # ─── 7. Vercel ───
+    paso(s, 7, 'Vercel: variables y publicación')
     clave_b64, clave_id, clave_nueva = nube.preparar_clave(s, proyecto, correo_servicio, estado)
     clave_anterior = estado.get('claveId')
     vercel = Vercel(s)
@@ -135,8 +141,8 @@ def instalar(s):
     if clave_nueva and clave_anterior and clave_anterior != clave_id:
         nube.borrar_clave_antigua(s, proyecto, correo_servicio, clave_anterior)
 
-    # ─── 7. Dominios y resumen ───
-    paso(s, 7, 'Dominio autorizado y comprobación final')
+    # ─── 8. Dominios y resumen ───
+    paso(s, 8, 'Dominio autorizado y comprobación final')
     dominios = vercel.dominios(proyecto_vercel, equipo)
     acceso.autorizar_dominios(s, proyecto, dominios)
     direccion = direccion_principal(dominios)

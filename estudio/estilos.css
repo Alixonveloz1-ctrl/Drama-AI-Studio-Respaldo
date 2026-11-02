@@ -355,3 +355,21 @@ details.escena-planos > summary .nota { font-family: var(--sans); font-weight: 4
 .plano .marco span { font-size: 12px; color: var(--muy-tenue); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
 .plano-datos .etiqueta { margin-left: 0; margin-right: 6px; }
 .ancla { font-family: var(--serifa); font-style: italic; color: var(--oro-claro) !important; font-size: 14px !important; margin: 8px 0 !important; }
+
+/* ─── Voces, música y exportar ─── */
+.voz-escena { margin: 10px 0 12px; display: grid; gap: 8px; }
+.voz-escena audio, .pista audio { width: 100%; height: 36px; }
+.pista { border-top: 1px solid var(--linea); padding-top: 10px; margin-top: 10px; }
+.pista p.corto { margin: 4px 0 6px; }
+.lista-estado { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.lista-estado li { display: flex; gap: 10px; align-items: baseline; font-size: 14px; line-height: 1.45; color: var(--tenue); }
+.lista-estado li span { width: 18px; flex-shrink: 0; text-align: center; font-weight: 700; }
+.lista-estado li.hecho span { color: var(--oro); }
+.lista-estado li.hecho { color: var(--texto); }
+.resultado { margin: 14px 0; display: grid; gap: 10px; }
+.resultado video { width: 100%; max-height: 70vh; border-radius: 12px; background: #000; }
+.episodios { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.episodios button { border: 1px solid var(--linea); background: transparent; color: var(--tenue); border-radius: 999px; padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.episodios button.actual { border-color: var(--oro); color: var(--oro); }
+a.btn, a.btn-sec { text-decoration: none; text-align: center; box-sizing: border-box; }
+a.btn-sec { display: block; }

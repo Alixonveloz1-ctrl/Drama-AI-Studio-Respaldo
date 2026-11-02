@@ -23,6 +23,8 @@ import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './
 import { desglosar, revisar, escenasDelEpisodio, textoEscena, NOMBRE_ENCUADRE, nombreDe } from './desglose.mjs';
 import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
 import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
+import { vozEscena, REGISTROS, registroDe, segundosVoz } from './voces.mjs';
+import { generarMusica, actosDelEpisodio } from './musica.mjs';
 import { crearControl } from './texto.mjs';
 import { segundosDe, esEcchi } from './prompts.mjs';
 import { direccionDeAspecto, textoDelLugar } from './imagenes.mjs';
@@ -48,10 +50,14 @@ export function montarEscenas(contenedor) {
   }, true);
   // Selectores de modelo (plegados): se guardan en el proyecto.
   raiz.addEventListener('change', evento => {
-    const campo = evento.target.closest('[name="modeloImagen"], [name="modeloVideo"]');
+    const campo = evento.target.closest('[name="modeloImagen"], [name="modeloVideo"], [name="registroVoz"]');
     const d = proyectoActual()?.datos;
     if (!campo || !d) return;
     d.ajustes = { ...(d.ajustes || {}), [campo.name]: campo.value };
+    if (campo.name === 'registroVoz') {
+      for (const e of escenasDelEpisodio(d, d.episodioActual || 1)) if (e.voz && e.voz.registro !== campo.value) e.voz.obsoleta = true;
+      pintarEscenas();
+    }
     guardar().catch(e => avisar(explicar(e), 'error'));
   });
 }
@@ -98,6 +104,9 @@ function pintarAhora() {
   const sinVideo = deAccion.filter(x => !x.video || x.videoObsoleto).length;
   const conVideo = planos.filter(x => x.video && !x.videoObsoleto).length;
   const enCurso = planos.filter(x => x.operacion?.nombre).length;
+  const sinVoz = escenas.filter(e => !e.voz?.tramos?.length || e.voz.obsoleta).length;
+  const actos = actosDelEpisodio(ep);
+  const sinMusica = actos.filter(a => !ep.musica?.[a.numero]?.ruta).length;
   const fichasQueFaltan = u.personajes.filter(x => !x.referencia).map(x => x.nombre);
   const accion = planos.filter(x => x.tipo === 'accion').length;
   const vertical = d.formulario.formato !== '16:9';
@@ -110,7 +119,7 @@ function pintarAhora() {
   <div class="card">
     ${fichasQueFaltan.length ? `<div class="caja-error">Faltan las fichas de ${escapar(fichasQueFaltan.join(', '))}. Sin ellas no se generan los planos donde aparecen.
       <button type="button" class="btn-sec" data-accion="ir-personajes">Ir a Personajes</button></div>` : ''}
-    <p class="nota">${escenas.length} escenas · ${planos.length} planos${planos.length ? ` (${Math.round(100 * accion / planos.length)} % de acción) · ${planos.length - sinImagen} con imagen · ${conVideo} con video` : ''}</p>
+    <p class="nota">${escenas.length} escenas · ${planos.length} planos${planos.length ? ` (${Math.round(100 * accion / planos.length)} % de acción) · ${planos.length - sinImagen} con imagen · ${conVideo} con video` : ''} · ${escenas.length - sinVoz} escenas con voz</p>
     ${enCurso && !ocupado ? `<p class="nota oro">Hay ${enCurso} video(s) que Veo ya estaba haciendo: pulsa «Generar todos los videos» o el botón del plano para seguirlos sin pagar otro.</p>` : ''}
     ${informe ? `<p class="nota">${escapar(informe)}</p>` : ''}
     ${antiguos ? `<p class="caja-error">${antiguos === escenas.length ? 'El desglose' : `El desglose de ${antiguos} escena(s)`} se hizo antes de las reglas de continuidad (quién está en la escena y dónde). Pulsa «Rehacer todo el desglose» antes de generar más imágenes.</p>` : ''}
@@ -119,9 +128,11 @@ function pintarAhora() {
     ${!sinDesglose && sinImagen ? `<button type="button" class="btn ancho" data-accion="lote">Generar todas las imágenes (${sinImagen})</button>` : ''}
     ${!sinDesglose && sinVideo ? `<button type="button" class="${sinImagen ? 'btn-sec' : 'btn ancho'}" data-accion="lote-videos">Generar todos los videos (${sinVideo})</button>` : ''}
     ${!sinDesglose && !sinImagen && !sinVideo ? `<p class="nota oro">Todas las imágenes y los videos de acción están hechos.</p>` : ''}
+    ${sinVoz ? `<button type="button" class="btn-sec" data-accion="lote-voces">Generar todas las voces (${sinVoz})</button>` : ''}
     ${planos.length ? `<button type="button" class="btn-sec" data-accion="revisar">Revisar la puesta en escena</button>` : ''}
     ${planos.length ? `<button type="button" class="btn-sec" data-accion="rehacer-todo">Rehacer todo el desglose</button>` : ''}
-    <details class="plegado"><summary>Modelos de imagen y video</summary>
+    <details class="plegado"><summary>Modelos y voces</summary>
+      <label class="campo-linea">Registro de las voces<select name="registroVoz">${REGISTROS.map(r => `<option value="${r.valor}"${r.valor === registroDe(d) ? ' selected' : ''}>${r.etiqueta}</option>`).join('')}</select></label>
       <label class="campo-linea">Modelo de imagen<select name="modeloImagen">${MODELOS_IMAGEN.map(m => `<option value="${m.valor}"${m.valor === modeloImagen(d) ? ' selected' : ''}>${m.etiqueta}</option>`).join('')}</select></label>
       <label class="campo-linea">Modelo de video<select name="modeloVideo">${MODELOS_VIDEO.map(m => `<option value="${m.valor}"${m.valor === modeloVideo(d) ? ' selected' : ''}>${m.etiqueta}</option>`).join('')}</select></label>
     </details>
@@ -133,6 +144,12 @@ function pintarAhora() {
       <summary><span class="escena-num">Escena ${n + 1}</span> ${escapar(e.titulo)} <span class="nota">· ${escapar(lugar)} · ≈ ${seg} s${e.planos?.length ? ` · ${e.planos.length} planos` : ''}</span></summary>
       ${Array.isArray(e.presentes) ? `<p class="nota">En escena desde el principio: ${escapar(e.presentes.map(id => nombreDe(u, id)).join(', ') || 'nadie')}</p>` : ''}
       <div class="lineas-compactas">${e.lineas.map(l => `<p><strong>${escapar(l.tipo === 'sistema' ? 'Sistema' : l.personaje === 'extra' ? (l.nombre || 'Extra') : fichaDe(u, l.personaje).nombre)}:</strong> ${escapar(l.texto)}</p>`).join('')}</div>
+      <div class="voz-escena">
+        ${(e.voz?.tramos || []).map(t => `<audio data-ruta="${escapar(t.ruta)}" controls preload="none"></audio>`).join('')}
+        ${e.voz?.obsoleta ? '<p class="aviso-obsoleta">Esta voz es de antes de cambiar una voz o el registro: rehazla.</p>' : ''}
+        ${caja('v-' + e.id)}
+        <button type="button" class="btn-sec" data-accion="voz" data-escena="${e.id}">${e.voz ? `Rehacer la voz de esta escena (≈ ${Math.round(segundosVoz(e))} s)` : 'Generar la voz de esta escena'}</button>
+      </div>
       ${caja('e-' + e.id)}
       <div class="planos">${(e.planos || []).map((x, i) => `
         <div class="plano${vertical ? ' lado' : ''}">
@@ -152,7 +169,14 @@ function pintarAhora() {
         </div>`).join('')}</div>
       ${e.planos?.length ? `<button type="button" class="btn-sec" data-accion="redesglose" data-escena="${e.id}">Rehacer el desglose de esta escena</button>` : ''}
     </details>`;
-  }).join('')}`;
+  }).join('')}
+  <div class="seccion"><h3>Música</h3></div>
+  <div class="card">
+    <p class="nota">Una pista por acto, compuesta a partir de la identidad musical de la serie. El ambiente y los efectos ya los pone cada video.</p>
+    ${actos.map(a => { const m = ep.musica?.[a.numero]; return `<div class="pista"><strong>Acto ${a.numero}</strong>${m?.brief ? `<p class="corto">${escapar(m.brief)}</p>` : ''}${m?.ruta ? `<audio data-ruta="${escapar(m.ruta)}" controls preload="none"></audio>` : ''}</div>`; }).join('')}
+    ${caja('musica')}
+    ${sinMusica ? `<button type="button" class="btn ancho" data-accion="musica">Generar la música (${sinMusica} ${sinMusica === 1 ? 'pista' : 'pistas'})</button>` : `<button type="button" class="btn-sec" data-accion="rehacer-musica">Rehacer la música</button>`}
+  </div>`;
   raiz.querySelectorAll('[data-accion]').forEach(b => { if (ocupado && !b.dataset.libre) b.disabled = true; });
   cargarImagenes(raiz, p.id);
 }
@@ -295,6 +319,29 @@ async function alPulsar(evento) {
       });
       if (cuenta.fallidos) ultimoError = { donde: 'general', texto: resumenTanda(cuenta) + '.\n' + cuenta.errores.map(e => `Plano ${e.elemento.plano.id}: ${e.texto}`).join('\n') };
       return resumenTanda(cuenta) + '.';
+    });
+  }
+  if (accion === 'voz') {
+    const escena = escenas.find(e => e.id === boton.dataset.escena);
+    return trabajar('v-' + escena.id, async o => { await vozEscena({ proyectoId: proyectoActual().id, datos: d, escena, ...o }); return 'Voz lista.'; });
+  }
+  if (accion === 'lote-voces') {
+    return trabajar('general', async o => {
+      const cuenta = await tanda(escenas, {
+        ...o, palabra: 'hechas',
+        yaHecho: e => Boolean(e.voz?.tramos?.length) && !e.voz.obsoleta,
+        hacer: (e, op) => vozEscena({ proyectoId: proyectoActual().id, datos: d, escena: e, control: op.control, aviso: op.aviso, guardar: o.guardar }),
+        alAvanzar: () => pintarEscenas(),
+      });
+      if (cuenta.fallidos) ultimoError = { donde: 'general', texto: resumenTanda(cuenta) + '.\n' + cuenta.errores.map(x => `${x.elemento.titulo}: ${x.texto}`).join('\n') };
+      return 'Voces: ' + resumenTanda(cuenta) + '.';
+    });
+  }
+  if (accion === 'musica' || accion === 'rehacer-musica') {
+    return trabajar('musica', async o => {
+      if (accion === 'rehacer-musica') d.episodios[numero].musica = {};
+      await generarMusica({ proyectoId: proyectoActual().id, datos: d, numero, ...o, alAvanzar: () => pintarEscenas() });
+      return 'Música lista.';
     });
   }
   if (accion === 'lote') {

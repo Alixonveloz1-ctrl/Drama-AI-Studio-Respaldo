@@ -21,6 +21,18 @@
     },
     "api/video-estado.js": {
       "maxDuration": 30
+    },
+    "api/voz.js": {
+      "maxDuration": 60
+    },
+    "api/musica.js": {
+      "maxDuration": 60
+    },
+    "api/transcripcion.js": {
+      "maxDuration": 30
+    },
+    "api/montaje.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

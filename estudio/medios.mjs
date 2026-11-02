@@ -107,7 +107,7 @@ export async function urlsDe(proyecto, rutas) {
 // Pone la URL a cada <img data-ruta> y <video data-ruta> de un contenedor
 // (y la imagen de portada a los videos con data-portada).
 export async function cargarImagenes(contenedor, proyecto) {
-  const medios = [...contenedor.querySelectorAll('img[data-ruta], video[data-ruta]')];
+  const medios = [...contenedor.querySelectorAll('img[data-ruta], video[data-ruta], audio[data-ruta]')];
   if (!medios.length || !proyecto) return;
   const rutas = medios.flatMap(m => [m.dataset.ruta, m.dataset.portada].filter(Boolean));
   try {

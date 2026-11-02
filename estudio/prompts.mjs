@@ -310,6 +310,19 @@ Devuelve JSON: {"lugares":[{"id":"${escenarios[0]?.id || 'l1'}","ficha":"…"}]}
   };
 }
 
+// ─── Episodios encadenados (sección 17) ───
+// El episodio nuevo conserva personajes, lugares, biblia y los hilos que
+// quedaron abiertos: se le cuenta lo que ya pasó, episodio por episodio.
+export function contextoAnteriores(datos, numero) {
+  const previos = [];
+  for (let n = 1; n < numero; n++) {
+    const ep = datos.episodios?.[n];
+    if (!ep?.bloques?.length) continue;
+    previos.push(`Episodio ${n}: ${ep.bloques.map(b => b.resumen).filter(Boolean).join(' ')}${ep.nota?.quedaAbierto ? ` Quedó abierto: ${ep.nota.quedaAbierto}` : ''}`);
+  }
+  return previos.length ? `\nLO QUE YA PASÓ EN LOS EPISODIOS ANTERIORES (canon: este es el episodio ${numero}; continúa desde aquí, no lo repitas ni lo contradigas, y paga o desarrolla lo que quedó abierto):\n${previos.join('\n')}\n` : '';
+}
+
 // ─── 4. Nota del episodio ───
 export function promptNota(datos, numero) {
   const f = datos.formulario;
@@ -318,7 +331,7 @@ export function promptNota(datos, numero) {
     mensaje: `${contextoEleccion(f)}
 
 ${contextoUniverso(datos)}
-
+${contextoAnteriores(datos, numero)}
 ${bibliaParaGuion(datos.biblia)}
 
 Vas a dirigir el EPISODIO ${numero} (${f.duracion === 3 ? 'prueba de 3 minutos' : 'unos 30 minutos'}). Cierre: ${f.cierre === 'suspenso' ? 'EN SUSPENSO: resuelve algo importante y deja un gancho explícito para el siguiente.' : 'COMPLETO: el conflicto central se cierra.'}
@@ -411,7 +424,7 @@ export function promptBloque(datos, numero, indice, plan, extra = '') {
     mensaje: `${contextoEleccion(f)}
 
 ${contextoUniverso(datos)}
-
+${contextoAnteriores(datos, numero)}
 ${bibliaParaGuion(datos.biblia)}
 ${nota ? `\nNOTA DEL DIRECTOR PARA ESTE EPISODIO:\nObjetivo: ${nota.objetivo}\nCurva emocional: ${nota.curvaEmocional}\nImagen clave (tiene que ocurrir): ${nota.imagenClave}\nNota: ${nota.notaDeDireccion}\n${f.cierre === 'suspenso' ? 'Queda abierto' : 'Posibilidad futura opcional'}: ${nota.quedaAbierto}` : ''}
 
@@ -441,5 +454,26 @@ Devuelve JSON:
 Las citas se copian EXACTAMENTE de los textos de "lineas", en el mismo orden en que ocurren. Las de "huellas" pueden salir también de "accion".
 "huellas" demuestra que el género y CADA subgénero elegido se notan en ESTE bloque: un bloque donde alguno no se nota se rechaza.`,
     temperatura: 0.75,
+  };
+}
+
+// ─── 6. Música por actos (sección 14.4) ───
+// Lyria solo acepta inglés: el director escribe cada brief en inglés.
+export function promptMusica(datos, actos) {
+  const u = datos.universo;
+  return {
+    sistema: 'Eres el COMPOSITOR y supervisor musical de un drama corto asiático. Escribes, para cada acto, la descripción de una pista instrumental para Lyria. Respondes SOLO JSON válido.',
+    mensaje: `${contextoEleccion(datos.formulario)}
+
+DRAMA: ${u.titulo} — ${u.premisa}
+IDENTIDAD MUSICAL DE LA SERIE (biblia): ${datos.biblia?.identidadMusical || ''}
+
+ACTOS DEL EPISODIO:
+${actos.map(a => `Acto ${a.numero} (≈ ${Math.round(a.segundos)} s): ${a.resumen}`).join('\n')}
+
+Para CADA acto escribe "brief": una descripción EN INGLÉS (Lyria rechaza cualquier otro idioma; ni una palabra en español, ni tildes ni eñes) de 25 a 60 palabras: género, instrumentos concretos, tempo aproximado, tono (tensión, aventura, triunfo, tristeza…) según lo que pasa en ese acto, dentro de la identidad musical de la serie. Instrumental, sin voces, sin letra, que no tape el diálogo.
+
+Devuelve JSON: {"pistas":[{"acto":1,"brief":"…"}]}`,
+    temperatura: 0.6,
   };
 }

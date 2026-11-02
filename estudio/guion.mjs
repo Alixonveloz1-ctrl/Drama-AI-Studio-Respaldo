@@ -334,6 +334,16 @@ export async function escribirGuion(datos, numero, opciones) {
     await guardar?.();
   }
   let escenaNum = ep.bloques.reduce((n, b) => n + b.escenas.length, 0);
+  // Ids de escena propios de cada episodio y de cada versión del guion: así
+  // un episodio nuevo o un guion rehecho NUNCA hereda imágenes, voces ni
+  // videos de otro (fallo real del estudio de anime). Los medios se nombran
+  // a partir de estos ids.
+  if (!ep.version) {
+    datos.versiones ||= {};
+    const anteriores = (datos.episodiosAnteriores || []).filter(x => x.numero === numero).length;
+    ep.version = datos.versiones[numero] = Math.max(datos.versiones[numero] || 0, anteriores) + 1;
+  }
+  const prefijo = `${numero > 1 ? 'ep' + numero : ''}${ep.version > 1 ? 'v' + ep.version : ''}e`;
   for (let i = ep.bloques.length; i < ep.plan.length; i++) {
     const pieza = ep.plan[i];
     const etiqueta = `Escribiendo el bloque ${i + 1} de ${ep.plan.length}`;
@@ -341,7 +351,7 @@ export async function escribirGuion(datos, numero, opciones) {
       const { bloque } = await pedirValidado(P.promptBloque(datos, numero, i, ep.plan),
         json => validarBloque(json, { universo: datos.universo, minimoPalabras: Math.ceil(pieza.palabras * 0.9), ciclos: pieza.ciclos, esApertura: i === 0, huellas: P.huellasPedidas(datos.formulario) }),
         { control, aviso, etiqueta });
-      for (const escena of bloque.escenas) escena.id = 'e' + (++escenaNum);
+      for (const escena of bloque.escenas) escena.id = prefijo + (++escenaNum);
       ep.bloques.push(bloque);
       ep.segundos = segundosDelEpisodio(ep);
       await guardar?.();

@@ -20,6 +20,7 @@ const SERVICIOS = [
   ['storage.googleapis.com', 'Cloud Storage', 'el bucket: proyectos y medios'],
   ['speech.googleapis.com', 'Speech-to-Text', 'subtítulos alineados'],
   ['texttospeech.googleapis.com', 'Text-to-Speech', 'voces'],
+  ['run.googleapis.com', 'Cloud Run', 'el montador del episodio final'],
 ];
 
 // Lo que la cuenta de servicio tiene que poder hacer en el bucket.
@@ -147,6 +148,18 @@ const revisar = puerta({ metodos: ['GET'] }, async (req, { propietario }) => {
           salida.comprobaciones.permisos = { ok: null, nota: 'No se pudieron comprobar los permisos: ' + e.message };
         }
       }
+    }
+  }
+
+  // ─── Montador del episodio final (Cloud Run Job) ───
+  if (quedaTiempo()) {
+    try {
+      const { r, datos } = await consultar(`https://run.googleapis.com/v2/projects/${proyecto}/locations/${cfg.regionMontaje}/jobs/${cfg.trabajoMontaje}`, token, proyecto);
+      salida.comprobaciones.montador = r.ok ? { ok: true, trabajo: cfg.trabajoMontaje }
+        : r.status === 404 ? { ok: false, error: 'Todavía no existe. Ejecuta el instalador (./c en Cloud Shell): es el que lo crea.' }
+          : { ok: null, nota: 'No se pudo comprobar: ' + textoGoogle(r, datos) };
+    } catch (e) {
+      salida.comprobaciones.montador = { ok: null, nota: 'No se pudo comprobar: ' + String(e.message).slice(0, 120) };
     }
   }
 

@@ -472,3 +472,119 @@ test('lugares: el director escribe una ficha detallada en inglés de cada lugar 
   assert.ok(I.textoDelLugar(datos.universo.escenarios[0]).includes(datos.universo.escenarios[0].ficha));
   assert.match(D.promptDesglose({ ...datos, episodios: {} }, [{ ...escenaDePrueba(), id: 'e1' }]).mensaje, /LUGARES \(ficha de cada uno/);
 });
+
+// ─── Voces, música, subtítulos, montaje y episodios ───
+import * as VZ from '../estudio/voces.mjs';
+import * as MU from '../estudio/musica.mjs';
+import * as SU from '../estudio/subtitulos.mjs';
+import * as MO from '../estudio/montaje.mjs';
+
+const VOCES = [{ nombre: 'Charon', genero: 'hombre' }, { nombre: 'Kore', genero: 'mujer' }, { nombre: 'Puck', genero: 'hombre' }, { nombre: 'Leda', genero: 'mujer' }];
+
+test('voces: cada personaje recibe una voz distinta según su sexo y la escena se parte en tramos de dos voces como mucho', () => {
+  const u = universoValido();
+  u.personajes[0].sexo = 'hombre'; u.personajes[1].sexo = 'mujer';
+  u.tieneSistema = true;
+  assert.equal(VZ.asignarVoces(u, VOCES), true);
+  assert.equal(VOCES.find(v => v.nombre === u.personajes[0].voz).genero, 'hombre');
+  assert.equal(VOCES.find(v => v.nombre === u.personajes[1].voz).genero, 'mujer');
+  assert.ok(u.vozSistema && u.vozSistema !== u.personajes[0].voz && u.vozSistema !== u.personajes[1].voz);
+  assert.equal(VZ.asignarVoces(u, VOCES), false, 'una voz asignada no se cambia sola');
+  const escena = { lineas: [
+    { tipo: 'dialogo', personaje: 'c1', texto: 'Uno.' }, { tipo: 'dialogo', personaje: 'c2', texto: 'Dos.' },
+    { tipo: 'pensamiento', personaje: 'c1', texto: 'Tres.' }, { tipo: 'sistema', personaje: null, texto: 'Misión.' },
+    { tipo: 'dialogo', personaje: 'extra', nombre: 'Criado', texto: 'Señor.' }] };
+  VZ.asignarExtras(u, [escena], VOCES);
+  const tramos = VZ.tramosDeEscena(escena, u);
+  assert.ok(tramos.every(t => t.voces.length <= 2));
+  assert.deepEqual(tramos.map(t => t.lineas.map(l => l.indice)), [[0, 1, 2], [3, 4]]);
+  assert.equal(tramos[0].lineas[2].pensamiento, true);
+});
+
+test('voces: la escena entera se genera por tramos y solo se guarda cuando están todos', async () => {
+  const datos = { formulario, universo: universoValido(), ajustes: { registroVoz: 'dramatica' } };
+  datos.universo.personajes[0].sexo = 'hombre'; datos.universo.personajes[1].sexo = 'mujer';
+  const escena = { id: 'e1', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Hola.' }, { tipo: 'dialogo', personaje: 'c2', texto: 'Adiós.' }] };
+  respuestas = [{ cuerpo: { voces: VOCES } }, { cuerpo: { ruta: 'r/voz-e1-1.wav', url: 'u', segundos: 2.4 } }];
+  let guardados = 0;
+  await VZ.vozEscena({ proyectoId: 'pabc12345', datos, escena, control: crearControl(), guardar: async () => { guardados++; } });
+  assert.equal(llamadas[1].url, '/api/voz');
+  assert.equal(llamadas[1].cuerpo.registro, 'dramatica');
+  assert.equal(llamadas[1].cuerpo.hablantes.length, 2);
+  assert.equal(llamadas[1].cuerpo.clave, 'voz-e1-1');
+  assert.deepEqual(escena.voz.tramos, [{ ruta: 'r/voz-e1-1.wav', segundos: 2.4, lineas: [0, 1] }]);
+  assert.ok(guardados >= 1);
+});
+
+test('subtítulos: el texto del guion con los tiempos reales; si casa poco, reparto proporcional; frases cortas', () => {
+  const t = SU.alinearTramo(['Arrodíllate, inútil.', 'Nunca lo haré.'], [
+    { palabra: 'arrodíllate', inicio: 0.1, fin: 0.8 }, { palabra: 'inútil', inicio: 0.9, fin: 1.4 },
+    { palabra: 'nunca', inicio: 2.0, fin: 2.3 }, { palabra: 'lo', inicio: 2.3, fin: 2.4 }, { palabra: 'haré', inicio: 2.4, fin: 2.9 }], 3.2);
+  assert.deepEqual(t.map(x => [x.inicio, x.fin, x.metodo]), [[0.1, 1.4, 'alineado'], [2.0, 2.9, 'alineado']]);
+  const p = SU.alinearTramo(['Uno dos tres.', 'Cuatro.'], [], 4);
+  assert.deepEqual(p.map(x => [x.inicio, x.fin]), [[0, 3], [3, 4]]);
+  const frases = SU.frasesDeLinea('Hoy pagas la deuda. ¿Me oyes?', 1, 3);
+  assert.deepEqual(frases.map(f => f.texto), ['Hoy pagas la deuda.', '¿Me oyes?']);
+  assert.equal(frases[0].inicio, 1);
+  assert.ok(Math.abs(frases.at(-1).fin - 3) < 1e-9);
+});
+
+test('música: un acto por bloque (la prueba de 3 min se parte en dos) y el brief tiene que estar en inglés', () => {
+  const ep = { bloques: [{ escenas: [{ id: 'e1', titulo: 'a', accion: 'x', lineas: [{ texto: 'uno dos' }] }, { id: 'e2', titulo: 'b', accion: 'y', lineas: [{ texto: 'tres' }] }] }] };
+  const actos = MU.actosDelEpisodio(ep);
+  assert.deepEqual(actos.map(a => a.escenas), [['e1'], ['e2']]);
+  const r = MU.validarMusica({ pistas: [{ acto: 1, brief: 'Tense score with taiko drums, guzheng and low strings, slow tempo, rising toward a confrontation.' }, { acto: 2, brief: 'Música épica con tambores, cuerdas graves y metales que crecen poco a poco hacia el triunfo final del protagonista en la plaza.' }] }, actos);
+  assert.ok(r.briefs[1]);
+  assert.ok(r.problemas.some(p => p.includes('español')));
+});
+
+test('montaje: cada escena dura su narración, los planos se reparten por peso, voces y música en su instante, sin duplicar el Sistema', () => {
+  const datos = { formulario, universo: universoValido(), episodios: { 1: { estado: 'completo', musica: { 1: { ruta: 'r/m1.wav', brief: 'x' } }, bloques: [{ escenas: [
+    { id: 'e1', titulo: 'La deuda', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Hola. ¿Me oyes?' }, { tipo: 'sistema', personaje: null, texto: 'Misión cumplida.' }],
+      voz: { tramos: [{ ruta: 'r/v1.wav', segundos: 2, lineas: [0], tiempos: [{ inicio: 0.1, fin: 1.9 }] }, { ruta: 'r/v2.wav', segundos: 1, lineas: [1] }] },
+      planos: [{ peso: 3, tipo: 'accion', imagen: { ruta: 'r/p1.png' }, video: { ruta: 'r/p1.mp4' }, sistema: 'Misión cumplida.' }, { peso: 1, tipo: 'cobertura', imagen: { ruta: 'r/p2.png' } }] },
+  ] }] } } };
+  const h = MO.hojaDeVideo(datos, 1);
+  const D = MO.ENTRADA + 2 + MO.PAUSA + 1 + MO.COLA;
+  assert.ok(Math.abs(h.planos.reduce((n, p) => n + p.duracion, 0) - D) < 0.01, 'la escena dura su narración');
+  assert.deepEqual(h.planos.map(p => p.tipo), ['video', 'imagen']);
+  assert.ok(h.planos[0].duracion > h.planos[1].duracion, 'el peso manda');
+  assert.equal(h.planos[0].sistema, 'Misión cumplida.');
+  assert.deepEqual(h.voces.map(v => v.inicio), [MO.ENTRADA, Number((MO.ENTRADA + 2 + MO.PAUSA).toFixed(3))]);
+  assert.deepEqual(h.subtitulos.map(s => s.texto), ['Hola.', '¿Me oyes?'], 'el panel del Sistema no se repite abajo');
+  assert.equal(h.subtitulos[0].inicio, Number((MO.ENTRADA + 0.1).toFixed(3)));
+  assert.equal(h.musica.length, 1);
+  assert.equal(h.musica[0].inicio, 0);
+  // Sin imagen o sin voz no se monta, y se dice qué falta.
+  datos.episodios[1].bloques[0].escenas[0].planos[1].imagenObsoleta = true;
+  assert.throws(() => MO.hojaDeVideo(datos, 1), /Falta la imagen del plano 2/);
+  const zip = MO.hojaDeZip(datos, 1);
+  assert.ok(zip.archivos.some(a => a.nombre === 'videos/escena-01-plano-01.mp4'));
+  assert.ok(zip.archivos.some(a => a.nombre === 'musica/acto-1.wav'));
+  assert.ok(zip.textos.some(t => t.nombre === 'guion.txt' && /ESCENA 1 — La deuda/.test(t.contenido)));
+});
+
+test('episodios encadenados: el episodio 2 conoce lo que pasó y sus escenas tienen ids propios (no hereda medios)', async () => {
+  const datos = { formulario, universo: universoValido(), biblia: { direccionVisual: 'ocre', ritmoNarrativo: 'rápido' }, episodioActual: 2, episodios: {
+    1: { estado: 'completo', nota: { quedaAbierto: 'el padre sigue preso' }, bloques: [{ resumen: 'Lin Feng cura al hijo de Wang Hu.', escenas: [] }] } } };
+  const p = P.promptNota(datos, 2).mensaje;
+  assert.match(p, /LO QUE YA PASÓ EN LOS EPISODIOS ANTERIORES/);
+  assert.match(p, /Episodio 1: Lin Feng cura al hijo de Wang Hu\. Quedó abierto: el padre sigue preso/);
+  respuestas = [texto({ objetivo: 'a', curvaEmocional: 'b', imagenClave: 'c', notaDeDireccion: 'd', quedaAbierto: '' }), texto(bloqueValido())];
+  const ep = await G.escribirGuion(datos, 2, { guardar: async () => {} });
+  assert.match(llamadas[1].cuerpo.mensaje, /LO QUE YA PASÓ EN LOS EPISODIOS ANTERIORES/);
+  assert.deepEqual(ep.bloques[0].escenas.map(e => e.id), ['ep2e1', 'ep2e2']);
+});
+
+test('montaje: los planos nunca bajan del mínimo; si no caben, la escena se alarga lo justo', () => {
+  const r = MO.repartir([3, 1, 1], 6);
+  assert.ok(Math.abs(r.durs.reduce((a, b) => a + b, 0) - 6) < 1e-9);
+  assert.ok(r.durs[0] > r.durs[1]);
+  const apretado = MO.repartir(Array(10).fill(1).concat([20]), 3);
+  assert.ok(apretado.durs.every(d => d >= MO.MINIMO_PLANO - 1e-9));
+  assert.equal(apretado.total, 11 * MO.MINIMO_PLANO);
+  const u = universoValido();
+  assert.equal(I.sexoDe({ appearance: 'a tall young man with short hair' }), 'hombre');
+  assert.equal(I.sexoDe({ aspecto: 'Mujer de pelo largo' }), 'mujer');
+  assert.equal(I.sexoDe({ appearance: 'short black hair' }), '');
+});

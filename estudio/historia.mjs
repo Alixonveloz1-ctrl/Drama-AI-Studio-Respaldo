@@ -229,8 +229,11 @@ function htmlGuion(d) {
         : `<div class="linea ${l.tipo}"><span class="quien">${escapar(nombrePersonaje(u, l.personaje, l.nombre))}${l.tipo === 'pensamiento' ? ' · piensa' : ''}</span>${escapar(l.texto)}</div>`).join('')}
     </div>`;
   }).join('');
+  const numeros = Object.keys(d.episodios || {}).map(Number).sort((a, b) => a - b);
+  const siguiente = (numeros.at(-1) || 1) + 1;
   return `<div class="seccion"><h3>Guion · episodio ${numero}</h3></div>
   <div class="card guion">
+    ${numeros.length > 1 ? `<div class="episodios">${numeros.map(n => `<button type="button" data-accion="episodio" data-numero="${n}" class="${n === numero ? 'actual' : ''}">Episodio ${n}</button>`).join('')}</div>` : ''}
     ${ep?.nota ? `<details class="plegado"><summary>Nota del director para este episodio</summary>
       <h4>Objetivo</h4><p>${escapar(ep.nota.objetivo)}</p><h4>Curva emocional</h4><p>${escapar(ep.nota.curvaEmocional)}</p>
       <h4>Imagen clave</h4><p>${escapar(ep.nota.imagenClave)}</p><h4>Nota</h4><p>${escapar(ep.nota.notaDeDireccion)}</p></details>` : ''}
@@ -240,6 +243,7 @@ function htmlGuion(d) {
     ${accion}
     ${escenasHtml}
     ${ep?.estado === 'completo' ? `<button type="button" class="btn ancho continuar" data-accion="continuar" data-libre="">Continuar: personajes y escenarios</button>
+      ${numero === siguiente - 1 ? `<button type="button" class="btn-sec" data-accion="siguiente">Escribir el episodio ${siguiente}</button>` : ''}
       <button type="button" class="btn-sec" data-accion="rehacer">Rehacer el guion</button>` : ''}
   </div>`;
 }
@@ -261,6 +265,18 @@ async function alPulsar(evento) {
   if (accion === 'elegir') return trabajar('ideas', 'Desarrollando el universo', o => accionElegir(boton.dataset.id, o));
   if (accion === 'biblia') return trabajar('biblia', 'El director escribe la biblia de la serie', accionBiblia);
   if (accion === 'guion') return trabajar('guion', 'Escribiendo el guion', accionGuion);
+  if (accion === 'episodio') {
+    proyectoActual().datos.episodioActual = Number(boton.dataset.numero);
+    guardar().catch(e => avisar(explicar(e), 'error'));
+    return pintar();
+  }
+  if (accion === 'siguiente') {
+    // Episodio nuevo: mismo universo, personajes, lugares y biblia; ningún
+    // medio del anterior. Se escribe a continuación de lo que ya pasó.
+    const d = proyectoActual().datos;
+    d.episodioActual = Math.max(...Object.keys(d.episodios).map(Number)) + 1;
+    return trabajar('guion', 'Escribiendo el episodio ' + d.episodioActual, accionGuion);
+  }
   if (accion === 'rehacer') {
     if (!confirm('Se escribirá un guion nuevo para este episodio y el actual se sustituye. El universo y los personajes no se tocan. ¿Seguir?')) return;
     const d = proyectoActual().datos;

@@ -32,7 +32,7 @@ export function resumen(salud) {
     salud.comprobaciones?.credenciales?.ok === false || salud.comprobaciones?.bucket?.ok === false ||
     salud.comprobaciones?.permisos?.ok === false || salud.servicios?.some(s => s.estado === 'apagada') || salud.acceso?.error;
   if (malo) return 'mal';
-  const dudoso = salud.servicios?.some(s => s.estado !== 'habilitada') || salud.comprobaciones?.permisos?.ok == null ||
+  const dudoso = salud.servicios?.some(s => s.estado !== 'habilitada') || salud.comprobaciones?.permisos?.ok == null || salud.comprobaciones?.montador?.ok === false ||
     salud.comprobaciones?.bucket?.aviso || salud.bucket?.aviso;
   return dudoso ? 'aviso' : 'ok';
 }
@@ -46,12 +46,12 @@ const codigo = texto => `<code>${escapar(texto)}</code>`;
 export function pintarSalud(s) {
   const partes = [];
 
-  // ─── Tu sesión ───
-  const sesion = [fila(true, 'Has entrado como', codigo(s.sesion?.correo || '—'))];
+  // ─── Inicio de sesión ───
+  // Sin correos en pantalla (decisión del dueño: es su aplicación personal).
+  const sesion = [];
   if (s.acceso?.error) sesion.push(fila(false, 'Acceso', '', s.acceso.error));
-  else if (s.acceso?.correosAutorizados) sesion.push(fila(null, 'Correos autorizados', s.acceso.correosAutorizados.map(codigo).join(', '), 'Variable STUDIO_ALLOWED_EMAILS'));
-  if (s.acceso?.proyectoFirebase) sesion.push(fila(null, 'Inicio de sesión de Google', codigo(s.acceso.proyectoFirebase), 'Proyecto de Firebase · variable STUDIO_FIREBASE_WEB_CONFIG'));
-  partes.push(`<div class="salud-bloque"><h4>Tu sesión</h4>${sesion.join('')}</div>`);
+  if (s.acceso?.proyectoFirebase) sesion.push(fila(true, 'Inicio de sesión de Google', codigo(s.acceso.proyectoFirebase), 'Proyecto de Firebase · variable STUDIO_FIREBASE_WEB_CONFIG'));
+  if (sesion.length) partes.push(`<div class="salud-bloque"><h4>Inicio de sesión</h4>${sesion.join('')}</div>`);
 
   // ─── Google Cloud ───
   const nube = [];
@@ -63,6 +63,8 @@ export function pintarSalud(s) {
   }
   const cred = s.comprobaciones?.credenciales;
   if (cred) nube.push(fila(cred.ok, 'Credenciales', cred.ok ? 'Google las acepta' : '', cred.error));
+  const mont = s.comprobaciones?.montador;
+  if (mont) nube.push(fila(mont.ok === null ? 'aviso' : mont.ok, 'Montador del episodio final', mont.ok ? codigo(mont.trabajo) : '', mont.error || mont.nota));
   partes.push(`<div class="salud-bloque"><h4>Google Cloud</h4>${nube.join('')}</div>`);
 
   // ─── Bucket ───
