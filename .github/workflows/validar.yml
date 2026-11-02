@@ -1,0 +1,26 @@
+name: Validar Drama AI Studio
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: JavaScript, HTML y reglas del dueño
+        run: node --test pruebas/estatico.test.mjs
+      - name: Servidor (acceso privado, puerta, salud)
+        run: node --test pruebas/servidor.test.cjs
+      - name: Instalador con Cloud Shell simulado
+        run: python3 -m unittest discover -s pruebas -p 'test_*.py'
+      - name: Scripts de Cloud Shell
+        run: bash -n c

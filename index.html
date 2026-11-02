@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a18">
+<meta name="robots" content="noindex, nofollow">
+<title>Drama AI Studio</title>
+<link rel="stylesheet" href="/estudio/estilos.css">
+</head>
+<body>
+<div id="starfield" aria-hidden="true"></div>
+
+<!-- Hasta que el servidor confirme la sesión no se dibuja el estudio. -->
+<div class="comprobando" id="comprobando" role="status" aria-live="polite">
+  <p class="marca">Drama AI Studio</p>
+  <span class="spinner"></span>
+  <p id="comprobando-texto">Comprobando tu acceso…</p>
+  <button type="button" class="btn-sec" id="btnReentrar" hidden style="max-width:20rem">Entrar con otra cuenta</button>
+</div>
+
+<div class="app" id="app" hidden>
+  <div class="barra-sup">
+    <button type="button" class="enlace-salir" id="btnSalir">Salir</button>
+  </div>
+  <header class="header">
+    <div class="brand">
+      <h1 class="marca">Drama AI Studio</h1>
+      <div class="sub">DRAMAS CORTOS <span class="version" id="version"></span></div>
+    </div>
+    <div class="header-btns">
+      <button type="button" class="header-btn" id="btnProyectos">📁 Proyectos</button>
+      <button type="button" class="header-btn" id="btnApis"><span class="dot" id="apiDot"></span> APIS</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ───────── HISTORIA ───────── -->
+    <section class="panel active" id="panel-historia" aria-label="Historia">
+      <div class="card">
+        <h2>📖 Historia</h2>
+        <p>Aquí estará el único formulario de creación: demografía, género, subgéneros, formato y tu concepto; después las tres ideas breves, el universo y el guion por bloques.</p>
+        <p class="nota">Llega en la fase 2.</p>
+      </div>
+      <div class="card">
+        <h2>🔐 Fase 1: acceso y diagnóstico</h2>
+        <p>Has entrado como <strong id="correo-sesion"></strong>.</p>
+        <p>Pulsa <strong>APIS</strong> arriba para ver qué cuenta de Google Cloud y qué bucket está usando el estudio, y si todo está en verde.</p>
+        <button type="button" class="btn" id="btnVerApis">Ver APIs configuradas</button>
+      </div>
+    </section>
+
+    <!-- ───────── PERSONAJES ───────── -->
+    <section class="panel" id="panel-personajes" aria-label="Personajes">
+      <div class="card">
+        <h2>👥 Personajes</h2>
+        <div class="empty"><div class="emoji">🎭</div>
+          <p>Fichas de personajes con su imagen de referencia, y también escenarios y objetos.</p>
+          <p class="nota">Llega en la fase 3.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── ESCENAS ───────── -->
+    <section class="panel" id="panel-escenas" aria-label="Escenas">
+      <div class="card">
+        <h2>🎬 Escenas</h2>
+        <div class="empty"><div class="emoji">🎞️</div>
+          <p>Los planos con sus imágenes y videos, la voz junto al texto, y la música y el ambiente en su apartado.</p>
+          <p class="nota">Llega en las fases 4, 5 y 6.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── EXPORTAR ───────── -->
+    <section class="panel" id="panel-exportar" aria-label="Exportar">
+      <div class="card">
+        <h2>📤 Exportar</h2>
+        <div class="empty"><div class="emoji">📦</div>
+          <p>Montaje final del episodio, descarga del MP4 y el ZIP con todo el material.</p>
+          <p class="nota">Llega en las fases 7 y 8.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="nav" aria-label="Secciones">
+  <button type="button" class="nav-tab active" data-panel="historia"><span class="icon">📖</span><span>Historia</span></button>
+  <button type="button" class="nav-tab" data-panel="personajes"><span class="icon">👥</span><span>Personajes</span></button>
+  <button type="button" class="nav-tab" data-panel="escenas"><span class="icon">🎬</span><span>Escenas</span></button>
+  <button type="button" class="nav-tab" data-panel="exportar"><span class="icon">📤</span><span>Exportar</span></button>
+</nav>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<div id="modales"></div>
+
+<script type="module" src="/estudio/inicio.mjs"></script>
+<script type="module" src="/estudio/estrellas.mjs"></script>
+</body>
+</html>
