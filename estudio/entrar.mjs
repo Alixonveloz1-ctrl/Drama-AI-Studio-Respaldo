@@ -46,7 +46,13 @@ async function arrancar() {
   };
   if (auth.currentUser) {
     try { await pasar(auth.currentUser); return; }
-    catch (e) { estado.textContent = explicar(e); await olvidar(sdk, auth); }
+    catch (e) {
+      estado.textContent = explicar(e);
+      // Solo una cuenta rechazada se olvida. Un corte de red o de Google al
+      // comprobar NO cierra la sesión de Google (antes sí, y había que
+      // volver a elegir la cuenta por un simple fallo pasajero).
+      if (e.status === 401 || e.status === 403) await olvidar(sdk, auth);
+    }
   } else {
     estado.textContent = '';
   }

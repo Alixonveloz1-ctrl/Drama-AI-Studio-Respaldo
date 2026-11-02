@@ -1,6 +1,6 @@
 // ════════════════════════════════════════════════════════════════
 // PROMPTS DE IMAGEN — en inglés (los modelos de imagen obedecen mejor).
-// El contrato de estilo semirrealista NO va aquí: lo añade siempre el
+// El contrato de estilo (foto de acción real retocada) NO va aquí: lo añade siempre el
 // servidor, primero, y no se puede sustituir.
 //
 // El género y CADA subgénero elegidos viajan con cada imagen (fichas,

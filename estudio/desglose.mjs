@@ -85,7 +85,7 @@ ${lineas}`;
   }).join('\n\n');
 }
 
-export const SISTEMA_FOTOGRAFIA = `Eres el DIRECTOR DE FOTOGRAFÍA de un drama corto asiático semirrealista que se mira en el teléfono. Decides cuántos planos tiene cada escena, qué muestra cada uno y su movimiento, a partir del guion YA ESCRITO. No inventas historia.
+export const SISTEMA_FOTOGRAFIA = `Eres el DIRECTOR DE FOTOGRAFÍA de un drama corto asiático de acción real (actores reales, imagen pulida de portada) que se mira en el teléfono. Decides cuántos planos tiene cada escena, qué muestra cada uno y su movimiento, a partir del guion YA ESCRITO. No inventas historia.
 
 DOS TIPOS DE PLANO (el ritmo sale de alternarlos):
 - "accion": alguien camina, pelea, construye, nada, conduce o manipula un objeto. Se anima con video: dura 4 segundos.

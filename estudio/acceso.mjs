@@ -5,6 +5,8 @@
 // Esto solo coordina la interfaz. La protección real está en el servidor:
 // cada endpoint comprueba al propietario por su cuenta.
 // ════════════════════════════════════════════════════════════════
+import { usarToken } from './red.mjs';
+
 const RUTA = '/api/salud?acceso=';
 const FIREBASE = 'https://www.gstatic.com/firebasejs/11.10.0/';
 let cliente;
@@ -70,6 +72,9 @@ export async function cerrarSesion() {
 // escribiendo.
 export async function protegerPagina(alMontar, alFallar = mostrarErrorSesion) {
   const { auth, sdk } = await obtenerCliente();
+  // Cada petición del estudio lleva el token vigente de la cuenta (ver red):
+  // la sesión dura lo que dure la cuenta en el teléfono, no una hora.
+  usarToken(forzar => auth.currentUser?.getIdToken(forzar === true));
   let montado, montando, reintento;
   const empezar = async usuario => {
     await sincronizarSesion(usuario);
@@ -91,8 +96,13 @@ export async function protegerPagina(alMontar, alFallar = mostrarErrorSesion) {
     clearTimeout(reintento);
     try { await empezar(usuario); }
     catch (e) {
-      alFallar(e);
-      if (e.status >= 400 && e.status < 500) return;
+      // Con el estudio ya abierto, un corte al renovar la sesión no es motivo
+      // para tapar la pantalla con «Volver a entrar» (eso parecía que la
+      // cuenta se había desconectado en mitad de un lote): se reintenta en
+      // silencio, y las peticiones llevan su propio token igualmente.
+      const denegado = e.status === 401 || e.status === 403;
+      if (!montado || denegado) alFallar(e);
+      if (denegado) return;
       reintento = setTimeout(() => intentar(usuario, Math.min(espera * 2, 30000)), espera);
     }
   };

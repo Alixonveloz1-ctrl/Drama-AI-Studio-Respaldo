@@ -5,22 +5,13 @@
 // ════════════════════════════════════════════════════════════════
 import { escapar, abrirHoja } from './interfaz.mjs';
 import { cerrarSesion } from './acceso.mjs';
+import { llamar } from './red.mjs';
 
 let ultimaSalud = null;
 
 export async function pedirSalud() {
-  let respuesta;
-  try {
-    respuesta = await fetch('/api/salud', { credentials: 'same-origin', cache: 'no-store' });
-  } catch {
-    throw new Error('No hay conexión con el estudio. Comprueba la red y vuelve a intentarlo.');
-  }
-  const datos = await respuesta.json().catch(() => null);
-  if (!respuesta.ok || !datos) {
-    const error = new Error(datos?.error || `El estudio no pudo hacer el diagnóstico (respuesta ${respuesta.status}).`);
-    error.status = respuesta.status;
-    throw error;
-  }
+  // Por la misma vía que todo lo demás: lleva el token vigente de la cuenta.
+  const datos = await llamar('/api/salud');
   ultimaSalud = datos;
   return datos;
 }

@@ -624,3 +624,29 @@ test('guion: en una historia con Sistema, sus propias líneas prueban el subgén
   const { problemas } = G.validarBloque(b, ctx({ universo: u, genero: f.genero, huellas: P.huellasPedidas(f) }));
   assert.deepEqual(problemas, []);
 });
+
+test('sesión: cada petición lleva el token vigente y un 401 fuerza uno nuevo y repite una vez', async () => {
+  const red = await import('../estudio/red.mjs');
+  const pedidos = [];
+  red.usarToken(async forzar => (forzar ? 'nuevo.token.b' : 'viejo.token.a'));
+  const cabeceras = [];
+  globalThis.fetch = async (url, opciones) => {
+    cabeceras.push(opciones.headers.Authorization);
+    pedidos.push(url);
+    return cabeceras.length === 1
+      ? new Response(JSON.stringify({ error: 'Entra con tu cuenta de Google para continuar.' }), { status: 401 })
+      : new Response(JSON.stringify({ ok: true }), { status: 200 });
+  };
+  try {
+    const r = await red.llamar('/api/imagen', { metodo: 'POST', cuerpo: { a: 1 } });
+    assert.deepEqual(r, { ok: true });
+    assert.deepEqual(cabeceras, ['Bearer viejo.token.a', 'Bearer nuevo.token.b']);
+    // Si el token nuevo también es rechazado, el error llega con su 401 (sin bucle).
+    cabeceras.length = 0;
+    globalThis.fetch = async (url, opciones) => { cabeceras.push(opciones.headers.Authorization); return new Response(JSON.stringify({ error: 'no' }), { status: 401 }); };
+    await assert.rejects(red.llamar('/api/texto'), e => e.status === 401);
+    assert.equal(cabeceras.length, 2);
+  } finally {
+    red.usarToken(null);
+  }
+});

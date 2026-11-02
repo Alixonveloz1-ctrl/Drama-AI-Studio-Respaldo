@@ -13,7 +13,7 @@ export const segundosDe = palabras => palabras / (PALABRAS_POR_MINUTO / 60);
 // La etiqueta del catálogo sin el emoji del principio («🧠 Psicológico» → «Psicológico»).
 const etiqueta = (lista, valor) => String(lista.find(x => x.valor === valor)?.etiqueta || valor).replace(/^[^\p{L}]+/u, '');
 
-// ─── Géneros, pensados para drama asiático semirrealista ───
+// ─── Géneros, pensados para drama asiático de acción real ───
 export const GUIAS_GENERO = {
   accion: 'GÉNERO: Acción. El motor es el conflicto físico: peleas, persecuciones y enfrentamientos con riesgo real. Las escenas muestran acción física, no solo conversación.',
   fantasia: 'GÉNERO: Fantasía. Hay magia, criaturas o un sistema de poder con reglas internas claras. Es un mundo propio, no el mundo moderno.',
@@ -154,7 +154,7 @@ ${subs.length ? REGLA_DE_CAPAS + '\n' : ''}${esEcchi(formulario) ? 'CONTENIDO EC
 SISTEMA: ${obligatorio ? 'esta historia TIENE Sistema (pantallas, notificaciones, misiones y recompensas; su voz en off es la única permitida).'
     : permitido ? 'el concepto del dueño menciona un sistema: decide si la historia lo tiene según ese concepto.'
     : 'esta historia NO tiene Sistema: no existen pantallas, niveles, puntos, misiones ni notificaciones.'}
-ESTILO VISUAL YA FIJADO: el de las portadas y miniaturas de los dramas cortos asiáticos de éxito: semirrealista, pulido y luminoso, con personajes de belleza de estrella de drama coreano o chino. Las descripciones de personas y lugares son concretas y filmables.`;
+ESTILO VISUAL YA FIJADO: el de las portadas y miniaturas de los dramas cortos asiáticos de éxito: fotografía de acción real con actores reales, retocada, pulida y luminosa, con personajes de belleza de estrella de drama coreano o chino. Las descripciones de personas y lugares son concretas y filmables.`;
 }
 
 function conceptoCanon(formulario) {
@@ -181,7 +181,7 @@ Devuelve JSON: {"ideas":[{"titulo":"…","concepto":"…"},{"titulo":"…","conc
 // ─── 2. Universo ───
 export function promptUniverso(formulario, idea) {
   return {
-    sistema: `Eres creador de universos para dramas cortos asiáticos semirrealistas. Diseñas premisa, mundo, reglas, personajes y escenarios sobre la idea elegida; NO escribes todavía el guion. ${CONTRATO_FIDELIDAD} Respondes SOLO JSON válido.`,
+    sistema: `Eres creador de universos para dramas cortos asiáticos de acción real. Diseñas premisa, mundo, reglas, personajes y escenarios sobre la idea elegida; NO escribes todavía el guion. ${CONTRATO_FIDELIDAD} Respondes SOLO JSON válido.`,
     mensaje: `${contextoEleccion(formulario)}
 ${conceptoCanon(formulario)}
 IDEA ELEGIDA POR EL DUEÑO (canon):
@@ -237,7 +237,7 @@ export function sistemaDirector(formulario) {
   return `Eres DIRECTOR CREATIVO de dramas cortos asiáticos para teléfono, con veinte años de oficio. Tu prioridad es la retención y ejecutas el formato sin diluirlo.
 LÍMITES DE TU AUTORIDAD: decides la identidad visual, sonora y de ritmo, y qué debe lograr cada episodio. NO decides el género: «${etiqueta(GENEROS, formulario.genero)}» y sus subgéneros son un encargo cerrado. No inventas mecánicas que el género no tiene.
 CÓMO TRABAJAS: concreto sobre abstracto («farol de papel naranja como única luz cálida de noche», no «iluminación atmosférica»); cada decisión se puede filmar, componer o cronometrar; coherencia por encima de novedad.
-EL ESTILO DE IMAGEN YA ESTÁ FIJADO: el de las portadas de los dramas cortos asiáticos de éxito: semirrealista, pulido, luminoso y con colores vivos, con personajes de belleza de idol. Tú eliges paleta, luz, composición y motivos; nunca pidas anime, dibujo ni ilustración.
+EL ESTILO DE IMAGEN YA ESTÁ FIJADO: el de las portadas de los dramas cortos asiáticos de éxito: fotografía de acción real con actores reales, retocada, pulida, luminosa y con colores vivos, con personajes de belleza de idol. Tú eliges paleta, luz, composición y motivos; nunca pidas anime, dibujo, pintura, ilustración ni «semi-realistic» (el modelo de imagen lo lee como dibujo).
 Respondes SOLO JSON válido.`;
 }
 
