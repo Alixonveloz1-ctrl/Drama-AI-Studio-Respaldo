@@ -196,3 +196,71 @@ test('una cuota espera, y Detener corta la espera en el acto', async () => {
 test('el JSON con saltos de línea sin escapar se repara', () => {
   assert.deepEqual(parsearJSON('```json\n{"a":"uno\ndos"}\n```'), { a: 'uno\ndos' });
 });
+
+// ─── Desglose de planos ───
+import * as D from '../estudio/desglose.mjs';
+
+function escenaDePrueba() {
+  const { bloque } = G.validarBloque(bloqueValido(), ctx());
+  return { ...bloque.escenas[0], id: 'e1' };
+}
+function desgloseValido(escena) {
+  const palabras = (escena.accion + ' ' + D.textoEscena(escena)).replace(/[«»"“”¿?¡!.,;:…—–()]/g, ' ').split(/\s+/).filter(Boolean);
+  // Siete planos (si la escena los admite), para que la proporción 70/30 cuente.
+  const n = Math.min(D.maximoPlanos(escena), Math.max(D.minimoPlanos(escena), 7));
+  const paso = Math.floor((palabras.length - 4) / n);
+  return { escenas: [{ id: escena.id, planos: Array.from({ length: n }, (_, i) => ({
+    tipo: i % 3 === 2 ? 'cobertura' : 'accion', ancla: palabras.slice(i * paso, i * paso + 4).join(' '), personajes: ['c1'], peso: 3,
+    prompt: 'Scene with Lin Feng (short black hair, grey robe): medium shot, side view, kneeling in the stone courtyard at dawn.',
+    movimiento: i % 3 !== 2 ? 'Lin Feng slowly raises his head.' : '', sistema: '' })) }] };
+}
+
+test('desglose: mínimos por palabras y por duración', () => {
+  const e = escenaDePrueba();
+  assert.ok(D.minimoPlanos(e) >= 3);
+  assert.equal(D.minimoPlanos({ ...e, lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Sí.' }] }), 1);
+  assert.ok(D.maximoPlanos(e) > D.minimoPlanos(e));
+});
+
+test('desglose bueno se acepta; anclas inventadas, desorden, pocos planos, mirar a cámara y proporción mala se rechazan', () => {
+  const e = escenaDePrueba();
+  const u = universoValido();
+  assert.deepEqual(D.validarDesglose(desgloseValido(e), [e], u).problemas, []);
+  const casos = [
+    [j => { j.escenas[0].planos[0].ancla = 'esto no lo dijo nadie nunca'; }, 'no está copiada literalmente'],
+    [j => { const p = j.escenas[0].planos; [p[0], p[2]] = [p[2], p[0]]; }, 'retrocede'],
+    [j => { j.escenas[0].planos = j.escenas[0].planos.slice(0, 1); }, 'necesita al menos'],
+    [j => { j.escenas[0].planos[1].prompt += ' He is looking at the camera.'; }, 'mira a cámara'],
+    [j => { j.escenas[0].planos.forEach(p => { p.tipo = 'cobertura'; }); }, 'proporción'],
+    [j => { j.escenas[0].planos[0].movimiento = ''; }, 'no dice qué movimiento'],
+  ];
+  for (const [romper, esperado] of casos) {
+    const j = desgloseValido(e);
+    romper(j);
+    const { problemas } = D.validarDesglose(j, [e], u);
+    assert.ok(problemas.some(p => p.includes(esperado)), `se esperaba «${esperado}»: ${problemas.join(' | ')}`);
+  }
+});
+
+test('el director de arte corrige sin borrar: la imagen queda obsoleta y dice qué no revisó', async () => {
+  const e = escenaDePrueba();
+  e.planos = D.validarDesglose(desgloseValido(e), [e], universoValido()).resultado.e1.map((p, n) => ({ ...p, id: `e1-${n + 1}` }));
+  e.planos[0].imagen = { ruta: 'x' };
+  const e2 = { ...escenaDePrueba(), id: 'e2', planos: [] };
+  const datos = { formulario, universo: universoValido(), biblia: {} };
+  respuestas = [texto({ revisadas: ['e1'], correcciones: [{ escena: 'e1', plano: 1, prompt: 'Scene with Lin Feng (short black hair): kneeling on the stone floor, no table in this courtyard, dawn light.', motivo: 'había una mesa que el patio no tiene' }] })];
+  const r = await D.revisar(datos, [e, e2], {});
+  assert.equal(r.correcciones, 1);
+  assert.equal(e.planos[0].imagenObsoleta, true);
+  assert.equal(e.planos[0].imagen.ruta, 'x', 'no se borra nada');
+  assert.deepEqual(r.sinRevisar, ['e2'], 'lo que no miró no se da por bueno');
+});
+
+test('desglose: las escenas se agrupan sin pasarse de 5 escenas ni de 24 planos por petición', () => {
+  const corta = { ...escenaDePrueba(), lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Sí.' }] };
+  const larga = { ...escenaDePrueba(), lineas: Array.from({ length: 40 }, () => ({ tipo: 'dialogo', personaje: 'c1', texto: 'Lo vi con mis propios ojos y no lo creo todavía.' })) };
+  assert.deepEqual(D.agrupar(Array(7).fill(corta)).map(g => g.length), [5, 2]);
+  const grupos = D.agrupar([corta, larga, corta]);
+  assert.ok(grupos.every(g => g.length === 1 || g.reduce((n, e) => n + D.minimoPlanos(e), 0) <= 24));
+  assert.equal(grupos.flat().length, 3);
+});

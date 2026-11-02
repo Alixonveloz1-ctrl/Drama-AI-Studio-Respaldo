@@ -9,6 +9,7 @@ import { abrirHoja, cerrarHoja, avisar, escapar } from './interfaz.mjs';
 import { listar, ultimoAbierto, recordarAbierto, proyectoActual } from './proyectos.mjs';
 import { montarHistoria, abrirProyecto, nuevoDrama, irAlFormulario } from './historia.mjs';
 import { montarPersonajes, pintarPersonajes } from './personajes.mjs';
+import { montarEscenas, pintarEscenas } from './escenas.mjs';
 import { explicar } from './red.mjs';
 
 const $ = selector => document.querySelector(selector);
@@ -29,6 +30,7 @@ function irA(panel) {
   window.scrollTo({ top: 0 });
   // Cada área se pinta al mostrarla, con el proyecto abierto en ese momento.
   if (panel === 'personajes') pintarPersonajes();
+  if (panel === 'escenas') pintarEscenas();
 }
 
 const fecha = ms => ms ? new Date(ms).toLocaleDateString('es', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
@@ -94,6 +96,7 @@ async function montar() {
   if (!document.getElementById('panel-' + panel)) panel = 'historia';
   montarHistoria($('#historia'));
   montarPersonajes($('#personajes'));
+  montarEscenas($('#escenas'));
   // Se vuelve a abrir el último proyecto leyéndolo del bucket (no del teléfono).
   const ultimo = ultimoAbierto();
   if (ultimo) {

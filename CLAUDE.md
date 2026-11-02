@@ -67,7 +67,7 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 1. Esqueleto, instalador, puerta, acceso privado y pantalla de salud — **hecha y probada por el dueño**.
 2. Historia: formulario con el catálogo completo, tres ideas breves, universo y guion por bloques — **hecha y probada por el dueño (guion real de 3 min)**.
 3. Personajes, escenarios y sus referencias — **hecha** (fichas, variantes editando la madre, escenarios, lote).
-4. Escenas e imágenes: botón por plano, botón de lote y la cola con el manejo de cuotas.
+4. Escenas e imágenes: botón por plano, botón de lote y la cola con el manejo de cuotas — **hecha** (desglose del director de fotografía, revisión del director de arte cada 5 escenas, imagen por plano con continuidad).
 5. Videos: arranque, consulta y audio nativo sin voces.
 6. Voces, música y ambiente.
 7. Subtítulos alineados y montaje final en Cloud Run.
@@ -86,6 +86,7 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 - `api/imagen.js` — contrato de estilo 9.1 primero, fichas con contrato 10.2 y continuidad 10.4 leídas del bucket en el servidor; guarda la imagen en el bucket y devuelve ruta + URL firmada. Bloqueo sin reintento.
 - `api/urls.js` — URLs firmadas (ver) y comprobación de existencia, solo dentro de la carpeta del proyecto.
 - `estudio/` — módulos del navegador; `index.html` y `entrar/` las páginas.
+  - `desglose.mjs` (director de fotografía: planos de acción/cobertura anclados al texto; director de arte: corrige sin borrar), `escenas.mjs` (pestaña Escenas).
   - `medios.mjs` (cola de imagen/video: esperas 60/120/180/240/300, tandas que saltan lo hecho), `imagenes.mjs` (prompts de imagen en inglés), `personajes.mjs` (pestaña Personajes).
   - `prompts.mjs` (textos de prompt), `guion.mjs` (ideas, universo, biblia, nota, bloques y su revisión),
     `texto.mjs` (esperas de cuota 20/45/90/150/240, bloqueo sin reintento, Detener), `historia.mjs` (pantalla),
