@@ -57,6 +57,8 @@ export function montarPersonajes(contenedor) {
         for (const e of escenasDelEpisodio(d, Number(n))) if (e.voz && e.lineas.some(l => ids.has(l.personaje))) e.voz.obsoleta = true;
       }
       guardar().catch(e => avisar(explicar(e), 'error'));
+      // Se redibuja para que aparezca la muestra (o el botón) de la voz nueva.
+      pintarPersonajes();
       return;
     }
     if (evento.target.matches('[name="modeloImagen"]')) {
