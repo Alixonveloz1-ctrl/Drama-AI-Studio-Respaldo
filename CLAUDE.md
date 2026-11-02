@@ -66,6 +66,11 @@ Mandan sobre la especificación donde la contradigan:
   y el desglose les da planos; siempre adultas y sin desnudez. El género y CADA
   subgénero elegido viajan a cada imagen como dirección de aspecto, y cada bloque
   del guion demuestra con una cita literal que todos se notan (si no, se reescribe).
+- **Estilo de imagen (sustituye al texto literal 9.1):** el de las portadas y
+  miniaturas de los dramas cortos asiáticos de éxito que mandó el dueño:
+  semirrealista pero pulido y luminoso, piel de porcelana, colores vivos, caras
+  de estrella de drama coreano o chino (rasgos de idol), no caras corrientes.
+  Nunca anime. Va siempre primero y no se sustituye.
 
 ## Construcción por fases
 

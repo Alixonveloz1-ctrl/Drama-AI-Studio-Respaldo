@@ -85,7 +85,7 @@ export const REGLA_DE_CAPAS = 'REGLA DE CAPAS: cada subgénero seleccionado se t
 
 // Decisión del dueño: las mujeres salen hermosas y los hombres atractivos,
 // como en los dramas asiáticos de gran producción.
-export const REPARTO_ATRACTIVO = 'REPARTO CON EL ATRACTIVO DE UN DRAMA ASIÁTICO DE GRAN PRODUCCIÓN: las mujeres adultas son muy hermosas (rostro bello y armonioso, piel impecable, figura esbelta y atractiva, bien arregladas según su época y su oficio) y los hombres principales son atractivos. La belleza se mantiene aunque el personaje sea pobre o esté en apuros: el vestuario cuenta su situación, no la cara.';
+export const REPARTO_ATRACTIVO = 'REPARTO CON EL ATRACTIVO DE UN DRAMA ASIÁTICO DE GRAN PRODUCCIÓN: las mujeres adultas son muy hermosas, con el aspecto de las actrices de los dramas coreanos y chinos de éxito (rasgos finos de idol, rostro en V, ojos grandes y luminosos, piel de porcelana impecable, pelo brillante, figura esbelta y atractiva, bien arregladas según su época y su oficio) y los hombres principales son atractivos como los galanes de esos dramas. En historias de hoy pueden llevar el pelo teñido (castaño, caoba, rubio) si encaja con el personaje. La belleza se mantiene aunque el personaje sea pobre o esté en apuros: el vestuario cuenta su situación, no la cara.';
 
 export const DISENO_ECCHI = `MODIFICADOR ECCHI ACTIVO — DISEÑO ADULTO DE LOS PERSONAJES:
 - Todos son adultos (18+) y se ven claramente adultos. Nunca secundaria ni uniformes asociados a menores.
@@ -154,7 +154,7 @@ ${subs.length ? REGLA_DE_CAPAS + '\n' : ''}${esEcchi(formulario) ? 'CONTENIDO EC
 SISTEMA: ${obligatorio ? 'esta historia TIENE Sistema (pantallas, notificaciones, misiones y recompensas; su voz en off es la única permitida).'
     : permitido ? 'el concepto del dueño menciona un sistema: decide si la historia lo tiene según ese concepto.'
     : 'esta historia NO tiene Sistema: no existen pantallas, niveles, puntos, misiones ni notificaciones.'}
-ESTILO VISUAL YA FIJADO: drama asiático semirrealista cinematográfico, como una serie de imagen real. Las descripciones de personas y lugares son realistas y filmables.`;
+ESTILO VISUAL YA FIJADO: el de las portadas y miniaturas de los dramas cortos asiáticos de éxito: semirrealista, pulido y luminoso, con personajes de belleza de estrella de drama coreano o chino. Las descripciones de personas y lugares son concretas y filmables.`;
 }
 
 function conceptoCanon(formulario) {
@@ -237,7 +237,7 @@ export function sistemaDirector(formulario) {
   return `Eres DIRECTOR CREATIVO de dramas cortos asiáticos para teléfono, con veinte años de oficio. Tu prioridad es la retención y ejecutas el formato sin diluirlo.
 LÍMITES DE TU AUTORIDAD: decides la identidad visual, sonora y de ritmo, y qué debe lograr cada episodio. NO decides el género: «${etiqueta(GENEROS, formulario.genero)}» y sus subgéneros son un encargo cerrado. No inventas mecánicas que el género no tiene.
 CÓMO TRABAJAS: concreto sobre abstracto («farol de papel naranja como única luz cálida de noche», no «iluminación atmosférica»); cada decisión se puede filmar, componer o cronometrar; coherencia por encima de novedad.
-EL ESTILO DE IMAGEN YA ESTÁ FIJADO: drama asiático semirrealista cinematográfico, como una serie de imagen real. Tú eliges paleta, luz, composición y motivos; nunca pidas anime, dibujo ni ilustración.
+EL ESTILO DE IMAGEN YA ESTÁ FIJADO: el de las portadas de los dramas cortos asiáticos de éxito: semirrealista, pulido, luminoso y con colores vivos, con personajes de belleza de idol. Tú eliges paleta, luz, composición y motivos; nunca pidas anime, dibujo ni ilustración.
 Respondes SOLO JSON válido.`;
 }
 

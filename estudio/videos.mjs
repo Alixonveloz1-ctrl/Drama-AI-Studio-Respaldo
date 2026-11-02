@@ -80,7 +80,7 @@ export function negativoVideo(plano, escenario) {
     'blurry, distorted face, deformed face, warped anatomy, extra limbs, extra fingers, morphing hands, flickering, warping background, melting geometry, duplicated character',
     'text, letters, subtitles, captions, watermark, logo, timestamp, letterboxing, black bars, split screen',
     'character facing the camera, eye contact with the camera, posing for the camera',
-    'anime, cartoon, illustration, cel shading, videogame cutscene, plastic skin',
+    'anime, cartoon, illustration, cel shading, videogame cutscene',
     'talking, speech, dialogue, voice-over, narration, singing',
     'indoor rain, rain inside a room, rain inside a corridor, precipitation indoors, water falling indoors, wet indoor floor, puddles indoors, indoor snow',
   ];

@@ -481,8 +481,9 @@ test('imagen: contrato de estilo primero, ficha con su contrato, endpoint global
   const { url, cuerpo } = llamadasVertex[0];
   assert.match(url, /\/locations\/global\/publishers\/google\/models\/gemini-3\.1-flash-image:generateContent$/);
   const partes = cuerpo.contents[0].parts;
-  assert.match(partes[0].text, /^ART STYLE \(non-negotiable.*CINEMATIC SEMI-REALISTIC LIVE-ACTION DRAMA FRAME/);
-  assert.match(partes[0].text, /professionally shot and graded drama series\.$/);
+  assert.match(partes[0].text, /^ART STYLE \(non-negotiable.*POLISHED SEMI-REALISTIC ASIAN SHORT-DRAMA KEY ART/);
+  assert.match(partes[0].text, /STRICTLY FORBIDDEN: 2D anime, cel shading/);
+  assert.match(partes[0].text, /made to stop the scroll\.$/);
   assert.ok(partes[1].inlineData, 'continuidad');
   assert.match(partes[2].text, /^This reference is the immediately preceding physical state/);
   assert.ok(partes[3].inlineData, 'ficha');

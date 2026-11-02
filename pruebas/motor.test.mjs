@@ -368,7 +368,7 @@ test('el ecchi y el reparto atractivo llegan al universo, al guion y a cada imag
   assert.ok(aspecto.includes(I.CASTING) && aspecto.includes(I.ASPECTO_GENERO.transmigracion) && aspecto.includes(I.ASPECTO_SUBGENERO.revenge) && aspecto.includes(I.ECCHI_VISUAL));
   assert.ok(!I.direccionDeAspecto(familia).includes(I.ECCHI_VISUAL));
   const ficha = I.promptFichaPersonaje({ nombre: 'Mei', sexo: 'mujer', edad: 24, rol: 'interés amoroso', appearance: 'long black hair, red silk dress' }, formulario);
-  assert.match(ficha, /strikingly beautiful adult woman/);
+  assert.match(ficha, /stunningly beautiful adult woman with the idol-like look/);
   assert.match(ficha, /curvy, alluring figure/);
   assert.ok(!I.promptFichaPersonaje({ nombre: 'Mei', sexo: 'mujer', edad: 24, appearance: 'x' }, familia).includes('curvy'));
   assert.equal(G.validarUniverso({ ...universoCrudo, personajes: [{ ...universoCrudo.personajes[0], sexo: 'hombre' }, { ...universoCrudo.personajes[1], sexo: 'Mujer' }] }, formulario).universo.personajes[1].sexo, 'mujer');
@@ -376,7 +376,7 @@ test('el ecchi y el reparto atractivo llegan al universo, al guion y a cada imag
 
 test('ficha: un personaje antiguo sin sexo guardado se reconoce por su aspecto en español', () => {
   const ficha = I.promptFichaPersonaje({ nombre: 'Mei', edad: 24, aspecto: 'Mujer de pelo largo negro, vestido rojo de seda', appearance: 'long black hair, red silk dress' }, formulario);
-  assert.match(ficha, /strikingly beautiful adult woman/);
+  assert.match(ficha, /stunningly beautiful adult woman with the idol-like look/);
   assert.match(ficha, /curvy, alluring figure/);
 });
 
