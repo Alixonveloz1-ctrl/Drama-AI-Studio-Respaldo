@@ -677,3 +677,18 @@ test('imagen: el escenario es una referencia para reconstruir el lugar a escala 
   assert.match(partes.at(-1).text, /8\. REAL-WORLD SCALE AND ONE PERSPECTIVE:.*a table top reaches an adult's hip/);
   assert.match(partes.at(-1).text, /never make a person a giant in front of a tiny set/);
 });
+
+test('imagen: la tela nunca se transparenta y esa regla va al final, después de la escena', async () => {
+  conCuentaDeServicio();
+  const { llamadasVertex } = vertexImagen(conImagen);
+  const imagen = require('../api/imagen');
+  const salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'personaje-c2', prompt: 'Single clean CHARACTER REFERENCE still of Lin Xue, wearing a wet see-through white blouse and a black pencil skirt.', ecchi: true }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  const ultimo = llamadasVertex[0].cuerpo.contents[0].parts.at(-1).text;
+  assert.match(ultimo, /11\. MODESTY LINE \(always\): the chest is always covered by OPAQUE fabric/);
+  assert.match(ultimo, /wearing a wet opaque white blouse/, 'el saneado quita «see-through»');
+  assert.ok(ultimo.trim().endsWith('No text anywhere in the image.'), 'el cierre va lo último');
+  assert.ok(ultimo.lastIndexOf('FINAL CHECK') > ultimo.indexOf('Scene to show:'));
+  assert.ok(!/\bnipples?\b/i.test(ultimo));
+});

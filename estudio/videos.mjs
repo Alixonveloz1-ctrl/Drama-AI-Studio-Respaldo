@@ -36,7 +36,10 @@ const CONSULTAS = 72;         // 12 minutos como mucho
 export const ACTUACION = 'PERFORMANCE — CRITICAL: the characters are acting inside the scene and stay in the story — never posing, never turning toward the lens, never making eye contact with the camera, never addressing the viewer. The angle on them is ALREADY set by the first frame; keep that relationship to them for the whole clip.';
 export const ENCUADRE_BLOQUEADO = 'FRAMING — LOCKED: the first frame sets the camera position, the lens and the shot size for the ENTIRE clip. Hold that exact framing from first frame to last: same distance to the subject, same lens, same shot size, same headroom, same amount of the room visible. The camera sits on a locked tripod unless the SHOT MOTION line names a camera move — if it names none, there is no zoom, no push-in, no pull-back and no reframing at any point.';
 export const ESTILO = 'STYLE — ABSOLUTELY MANDATORY: preserve the exact rendering of the first frame, pixel for pixel in look. Do not restyle it, do not turn it into animation, illustration or a videogame cinematic while moving.';
-export const AUDIO = 'AUDIO: NO voice dialogue, NO narration, NO singing, NO human speech of any kind. ONLY the diegetic sound of this shot: ambience of the location and the sound effects of the action actually visible in frame.';
+// El texto literal de la especificación y, detrás, una frase añadida: Veo
+// cumplía «sin habla» pero metía gritos, jadeos y risas (lo vio el dueño).
+// Toda voz humana, también un grito, la pone después la voz del personaje.
+export const AUDIO = 'AUDIO: NO voice dialogue, NO narration, NO singing, NO human speech of any kind. ONLY the diegetic sound of this shot: ambience of the location and the sound effects of the action actually visible in frame. NO human vocal sounds at all either: no screams, shouts, yells, gasps, grunts, groans, moans, sighs, laughter, crying, sobbing or heavy breathing — even if a character opens their mouth, the soundtrack carries only ambience and object sounds; every human voice is added later.';
 
 // Del estudio de anime: Veo trata la lluvia como una capa de partículas de
 // pantalla completa y la extendía por todo el plano, también dentro de un
@@ -81,7 +84,8 @@ export function negativoVideo(plano, escenario) {
     'text, letters, subtitles, captions, watermark, logo, timestamp, letterboxing, black bars, split screen',
     'character facing the camera, eye contact with the camera, posing for the camera',
     'anime, cartoon, illustration, cel shading, videogame cutscene',
-    'talking, speech, dialogue, voice-over, narration, singing',
+    'talking, speech, dialogue, voice-over, narration, singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds',
+    'see-through clothing, transparent wet shirt, sheer fabric showing skin underneath',
     'indoor rain, rain inside a room, rain inside a corridor, precipitation indoors, water falling indoors, wet indoor floor, puddles indoors, indoor snow',
   ];
   if (escenario?.interior) partes.push('rain streaks across the frame, rain in the foreground, weather particles over the characters, raindrops on the lens, indoor mist, indoor fog, wind blowing indoors, wet hair, wet clothing, water dripping from the ceiling');

@@ -15,6 +15,8 @@ const PALABRAS = [
   [/\bgenitals?\b/gi, ''], [/\bnipples?\b/gi, ''], [/\bnon-consensual\b/gi, 'surprising'],
   [/\bdesnud[oa]s?\b/gi, 'vestida'], [/\bpornogr[áa]fic[oa]s?\b/gi, 'romántico'], [/\bpezones?\b/gi, ''],
   [/\bgenitales\b/gi, ''], [/\bsexual(es|mente)?\b/gi, 'romántico'],
+  // La ropa nunca se transparenta: Veo bloquea después el video de ese plano.
+  [/\b(see-through|translucent)\b/gi, 'opaque'], [/\btransl[uú]cid[oa]s?\b/gi, 'opaca'],
 ];
 const REDUNDANTE = [
   [/,?\s*(?:while |thus )?revealing (?:the )?(?:full |complete |entire )?(?:outline|silhouette|shape|curves?|contours?) of [^.,;]{0,70}/gi, ''],

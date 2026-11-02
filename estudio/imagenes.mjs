@@ -64,7 +64,7 @@ export const ASPECTO_SUBGENERO = {
 // Casting (decisión del dueño): siempre, para todos los proyectos.
 export const CASTING = 'CASTING of a hit Asian short drama: every adult woman is stunningly beautiful with an idol-like look — the refined, delicate features of top Korean and Chinese drama actresses: harmonious V-shaped face, large bright expressive eyes, small refined nose, soft full lips, flawless luminous porcelain skin, glossy hair, slender attractive figure, perfectly groomed for her era and role. Adult men are handsome like Korean and Chinese drama leading men: sharp jawline, clear skin, stylish hair, fit build. Keep each person\'s stated age, role, hair, injuries and dirt.';
 
-export const ECCHI_VISUAL = 'ADULT ECCHI PROJECT: adult women (clearly 18+) have curvy, alluring figures and figure-flattering wardrobe consistent with their era and role (form-fitting cuts, low necklines, high slits, fabric that clings). When the scene has a suggestive beat, render it confidently through pose, framing and wardrobe. Never nudity, never intimate parts, never anything that reads as a minor.';
+export const ECCHI_VISUAL = 'ADULT ECCHI PROJECT: adult women (clearly 18+) have curvy, alluring figures and figure-flattering wardrobe consistent with their era and role (form-fitting cuts, low necklines, high slits, opaque fabric that hugs the figure, never transparent). When the scene has a suggestive beat, render it confidently through pose, framing and wardrobe. Never nudity, never intimate parts, never anything that reads as a minor.';
 
 // Dirección de aspecto que acompaña a cada imagen del proyecto.
 export function direccionDeAspecto(formulario) {
@@ -87,7 +87,7 @@ export function promptFichaPersonaje(p, formulario) {
   const ecchi = esEcchi(formulario) && mujer
     ? ' Her signature outfit flatters her curvy, alluring figure (form-fitting, as described), and she stands in a confident, attractive pose that shows her full silhouette.'
     : '';
-  return `Single clean CHARACTER REFERENCE still of ${p.nombre}, ${belleza}, ${p.rol || 'character'}. ${p.appearance || p.aspecto}.${ecchi} ONE person only, full body from head to feet, relaxed natural standing pose, three-quarter front view, face clearly readable, hands visible, plain light-grey studio backdrop with soft flattering light. Wardrobe exactly as described. Hair exactly as described. No turnaround, no collage, no multiple poses, no expression sheet.`;
+  return `Single clean CHARACTER REFERENCE still of ${p.nombre}, ${belleza}, ${p.rol || 'character'}. ${p.appearance || p.aspecto}.${ecchi} ONE person only, full body from head to feet, relaxed natural standing pose, three-quarter front view, face clearly readable, hands visible, plain light-grey studio backdrop with soft flattering light. Wardrobe exactly as described, clean, dry and fully opaque (this is the reference outfit; wet or torn states belong to scenes). Hair exactly as described. No turnaround, no collage, no multiple poses, no expression sheet.`;
 }
 
 // Referencia de escenario: el lugar vacío, para fijar su arquitectura y su luz.

@@ -444,3 +444,14 @@ test('medios: la espera dice el motivo real y un corte por tiempo no se repite s
   await assert.rejects(pedirMedio('/api/imagen', { a: 1 }, { control: crearControl() }), e => e.tipo === 'tiempo');
   assert.equal(llamadas.length, 1, 'no se paga dos veces');
 });
+
+test('video: el audio prohíbe también gritos y jadeos, y el negativo los lista', () => {
+  const u = universoValido();
+  const p = V.promptVideo({ movimiento: 'Lin Feng shouts at the guard.' }, u.escenarios[0]);
+  assert.ok(p.endsWith(V.AUDIO));
+  assert.match(V.AUDIO, /^AUDIO: NO voice dialogue, NO narration, NO singing, NO human speech of any kind\. ONLY the diegetic sound of this shot/);
+  assert.match(V.AUDIO, /no screams, shouts, yells, gasps/);
+  const n = V.negativoVideo({ movimiento: '' }, u.escenarios[0]);
+  assert.match(n, /screaming, shouting/);
+  assert.match(n, /see-through clothing/);
+});

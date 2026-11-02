@@ -90,11 +90,11 @@ export const REPARTO_ATRACTIVO = 'REPARTO CON EL ATRACTIVO DE UN DRAMA ASIÁTICO
 export const DISENO_ECCHI = `MODIFICADOR ECCHI ACTIVO — DISEÑO ADULTO DE LOS PERSONAJES:
 - Todos son adultos (18+) y se ven claramente adultos. Nunca secundaria ni uniformes asociados a menores.
 - Las mujeres tienen una figura muy atractiva y voluptuosa, cada una con su propio tipo y rasgos reconocibles (no clones de la misma figura).
-- Su vestuario habitual realza la figura dentro de su época, su oficio y su estatus: ajustado, con escote o aberturas, telas que se pegan al cuerpo. Escríbelo en "aspecto" y en "appearance".
+- Su vestuario habitual realza la figura dentro de su época, su oficio y su estatus: ajustado, con escote o aberturas, telas que marcan la figura pero SIEMPRE opacas (nada transparente ni que deje ver el pecho a través). Escríbelo en "aspecto" y en "appearance".
 - En "appearance" (inglés) usa palabras que el generador de imagen acepta: "stunningly beautiful", "curvy figure", "form-fitting", "low neckline", "high slit". Nunca desnudez ni partes íntimas.`;
 
 export const REGLAS_ECCHI_GUION = `REGLAS ECCHI (contenido para adultos; se COMBINA con el género principal, no lo reemplaza):
-- Teje momentos reales de fan service donde la escena lo permita, con variedad entre ellos: caída accidental encima de alguien, ropa mojada tras la lluvia o el agua, cambio de ropa interrumpido, toalla que casi cae, ropa ajustada de trabajo o de deporte, inclinarse sin darse cuenta, proximidad incómoda en un sitio estrecho, baño termal, ropa de dormir.
+- Teje momentos reales de fan service donde la escena lo permita, con variedad entre ellos: caída accidental encima de alguien, ropa mojada tras la lluvia o el agua (se pega al cuerpo pero nunca se transparenta), cambio de ropa interrumpido, toalla que casi cae, ropa ajustada de trabajo o de deporte, inclinarse sin darse cuenta, proximidad incómoda en un sitio estrecho, baño termal, ropa de dormir.
 - El momento se VE: escríbelo en "accion" (lo que se ve al empezar la escena) con un hecho físico concreto. El diálogo no lo describe ni lo señala: reacciona a él (vergüenza, provocación, celos).
 - Prohibido el inventario de anatomía y los adjetivos metidos a empujones: suena forzado y hace que el generador rechace el plano.
 - Sin desnudez explícita ni partes íntimas.`;

@@ -138,7 +138,7 @@ ${fichaVisual(u)}
 
 DIRECCIÓN VISUAL DE LA SERIE: ${datos.biblia?.direccionVisual || ''}
 ASPECTO DEL GÉNERO Y DE CADA SUBGÉNERO (obligatorio en los prompts; todos a la vez): ${direccionDeAspecto(datos.formulario)}
-${esEcchi(datos.formulario) ? `FAN SERVICE (ecchi adulto): cuando la escena tiene un momento sugerente (está en su "accion" o en lo que se dice), dale al menos un plano que lo muestre con claridad: encuadre que realza la figura, ropa ajustada o mojada, pose atractiva, ángulo sugerente. Las mujeres siempre se describen hermosas y con su vestuario ajustado. Sin desnudez ni partes íntimas, y sin palabras que el filtro bloquee.
+${esEcchi(datos.formulario) ? `FAN SERVICE (ecchi adulto): cuando la escena tiene un momento sugerente (está en su "accion" o en lo que se dice), dale al menos un plano que lo muestre con claridad: encuadre que realza la figura, ropa ajustada o mojada (siempre opaca: nunca transparente ni dejando ver el pecho a través), pose atractiva, ángulo sugerente. Las mujeres siempre se describen hermosas y con su vestuario ajustado. Sin desnudez ni partes íntimas, y sin palabras que el filtro bloquee.
 ` : ''}
 RITMO DE MONTAJE: ${datos.biblia?.ritmoMontaje || ''}
 Formato de imagen: ${datos.formulario.formato === '16:9' ? '16:9 horizontal' : '9:16 vertical: encuadres verticales, personajes centrados, poco aire lateral'}.
