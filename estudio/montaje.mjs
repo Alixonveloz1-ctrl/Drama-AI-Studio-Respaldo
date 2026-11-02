@@ -17,6 +17,7 @@ import { errorDetenido, esCuota } from './texto.mjs';
 import { escenasDelEpisodio, nombreDe } from './desglose.mjs';
 import { actosDelEpisodio } from './musica.mjs';
 import { frasesDeLinea } from './subtitulos.mjs';
+import { vozVigente } from './voces.mjs';
 
 export const ENTRADA = 0.35, PAUSA = 0.25, COLA = 0.5;
 export const MINIMO_PLANO = 0.5;
@@ -56,7 +57,7 @@ export function estadoDelEpisodio(datos, numero) {
     sinImagen: planos.filter(p => !p.imagen || p.imagenObsoleta).length,
     accion: planos.filter(p => p.tipo === 'accion').length,
     sinVideo: planos.filter(p => p.tipo === 'accion' && (!p.video || p.videoObsoleto)).length,
-    sinVoz: escenas.filter(e => !e.voz?.tramos?.length || e.voz.obsoleta).length,
+    sinVoz: escenas.filter(e => !vozVigente(e)).length,
     actos: actos.length,
     sinMusica: actos.filter(a => !ep?.musica?.[a.numero]?.ruta).length,
   };
@@ -72,7 +73,7 @@ export function hojaDeVideo(datos, numero) {
   let t0 = 0;
   for (const e of escenas) {
     if (!e.planos?.length) throw new Error(`La escena «${e.titulo}» no tiene desglose de planos.`);
-    if (!e.voz?.tramos?.length) throw new Error(`La escena «${e.titulo}» no tiene voz.`);
+    if (!vozVigente(e)) throw new Error(`La escena «${e.titulo}» no tiene voz (o es de una versión anterior y hay que rehacerla).`);
     const { durs, total: D } = repartir(e.planos.map(p => p.peso || 1), duracionEscena(e));
     inicioDe[e.id] = { inicio: t0, duracion: D };
     e.planos.forEach((p, i) => {

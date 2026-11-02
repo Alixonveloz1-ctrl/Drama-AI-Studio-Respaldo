@@ -719,7 +719,7 @@ test('audio: el PCM se envuelve en WAV y su duración se lee de la cabecera', ()
   assert.equal(duracionWav(Buffer.from('no es un wav')), null);
 });
 
-test('voz: las voces se piden a Google (con su género) y un tramo de dos hablantes va en UNA llamada', async () => {
+test('voz: las voces se piden a Google (con su género) y cada tramo es una sola voz con solo el texto que se dice', async () => {
   conCuentaDeServicio();
   process.env.GCS_OUTPUT_BUCKET = 'bucket-prueba';
   const voz = require('../api/voz');
@@ -733,21 +733,20 @@ test('voz: las voces se piden a Google (con su género) y un tramo de dos hablan
   const pcm = Buffer.alloc(24000 * 2 * 3).toString('base64');
   ({ vistas } = mundoGoogle(() => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;codec=pcm;rate=24000', data: pcm } }] } }] }))));
   const salida = respuesta();
-  await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', registro: 'dramatica', hablantes: [{ voz: 'Charon' }, { voz: 'Kore' }],
-    lineas: [{ hablante: 0, texto: '¡Arrodíllate!' }, { hablante: 1, texto: 'Nunca.' }, { hablante: 0, texto: 'Ya verás.', pensamiento: true }] }), salida);
+  await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', registro: 'dramatica', voz: 'Kore', lineas: ['¡Arrodíllate!', 'Hoy pagas la deuda.'] }), salida);
   assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
   assert.equal(salida.valor.segundos, 3);
   assert.equal(salida.valor.ruta, base + 'voz-e1-1.wav');
-  assert.equal(vistas.length, 1, 'los dos hablantes en la misma llamada');
   assert.match(vistas[0].url, /\/v1beta1\/projects\/.*\/models\/gemini-2\.5-flash-preview-tts:generateContent$/);
   const cuerpo = vistas[0].cuerpo;
-  assert.deepEqual(cuerpo.generationConfig.speechConfig.multiSpeakerVoiceConfig.speakerVoiceConfigs.map(s => s.voiceConfig.prebuiltVoiceConfig.voiceName), ['Charon', 'Kore']);
+  assert.equal(cuerpo.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, 'Kore');
   const texto = cuerpo.contents[0].parts[0].text;
   assert.ok(texto.startsWith(voz.instruccion('dramatica')), 'la misma instrucción de estilo en todas las llamadas');
-  assert.match(texto, /Speaker1: ¡Arrodíllate!\nSpeaker2: Nunca\.\nSpeaker1: \(inner thought\) Ya verás\./);
-  const tres = respuesta();
-  await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', hablantes: [{ voz: 'Charon' }, { voz: 'Kore' }, { voz: 'Puck' }], lineas: [{ texto: 'x' }] }), tres);
-  assert.equal(tres.statusCode, 400);
+  assert.ok(texto.endsWith('\n\n¡Arrodíllate!\nHoy pagas la deuda.'), 'al modelo solo le llega lo que se dice');
+  assert.ok(!/Speaker|Kore:/.test(texto), 'ningún nombre ni etiqueta en el texto');
+  const sinVoz = respuesta();
+  await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', lineas: ['x'] }), sinVoz);
+  assert.equal(sinVoz.statusCode, 400);
 });
 
 test('música: un brief en español se rechaza antes de llamar a Lyria; en inglés se guarda en el bucket', async () => {

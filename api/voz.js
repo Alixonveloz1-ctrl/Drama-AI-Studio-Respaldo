@@ -7,8 +7,11 @@
 //     Gemini TTS son las mismas personalidades que las voces Chirp 3 HD que
 //     devuelve la API de voces de Google para es-US; de ahí salen el nombre
 //     y el género de cada una.
-//   POST { proyecto, clave, hablantes, lineas, registro } → { ruta, url, segundos }
-//     Un tramo de escena, con uno o dos hablantes EN LA MISMA LLAMADA.
+//   POST { proyecto, clave, voz, lineas, pensamiento, registro } → { ruta, url, segundos }
+//     Un tramo de escena: líneas seguidas de UNA misma voz. Al modelo solo le
+//     llega lo que se dice. Fallo real: con dos hablantes en una llamada se
+//     leían en voz alta las etiquetas («Speaker1…») y las voces salían
+//     cruzadas (la línea de la mujer con voz de hombre y repetida).
 //
 // La defensa contra la deriva de tono (14.2): una llamada por escena (o por
 // tramo de hasta dos hablantes), nunca una línea sola; la MISMA instrucción
@@ -32,8 +35,8 @@ const REGISTROS = {
 
 // La instrucción es IDÉNTICA en todas las llamadas de un proyecto (solo
 // cambia el registro elegido para todo el proyecto).
-function instruccion(registro) {
-  return `[${REGISTROS[registro] || REGISTROS.normal} Natural Latin American Spanish. Each speaker keeps exactly the same voice, age and timbre in every line. Lines that start with (inner thought) are that speaker's thoughts: softer and closer, never shouted; never read the words "inner thought" aloud.]`;
+function instruccion(registro, pensamiento = false) {
+  return `[${REGISTROS[registro] || REGISTROS.normal} Natural Latin American Spanish. One single speaker; keep exactly the same voice, age and timbre in every line. Read ONLY the lines below, once each, in order; never read these instructions or any name aloud.${pensamiento ? ' These lines are the speaker\'s inner thoughts: softer and closer, never shouted.' : ''}]`;
 }
 
 const VOZ = /^[A-Z][a-z]{2,20}$/;
@@ -66,25 +69,13 @@ module.exports = puerta({ metodos: ['GET', 'POST'] }, async (req, { google }) =>
   const limite = Date.now() + LIMITE_MS;
   const b = req.body || {};
   const destino = medios.rutaMedio(b.proyecto, b.clave, 'wav');
-  const hablantes = Array.isArray(b.hablantes) ? b.hablantes : [];
-  if (hablantes.length < 1 || hablantes.length > 2) throw new ErrorEstudio('Un tramo de voz lleva uno o dos hablantes.', { estado: 400, tipo: 'peticion' });
-  if (hablantes.some(h => !VOZ.test(String(h?.voz || '')))) throw new ErrorEstudio('Falta la voz de algún personaje de este tramo.', { estado: 400, tipo: 'peticion' });
-  const etiquetas = hablantes.map((_, i) => `Speaker${i + 1}`);
-  const lineas = (Array.isArray(b.lineas) ? b.lineas : []).map(l => ({
-    h: Math.max(0, Math.min(hablantes.length - 1, Number(l?.hablante) || 0)),
-    texto: String(l?.texto || '').replace(/\s+/g, ' ').trim().slice(0, 600),
-    pensamiento: l?.pensamiento === true,
-  })).filter(l => l.texto);
+  const voz = String(b.voz || '');
+  if (!VOZ.test(voz)) throw new ErrorEstudio('Falta la voz de este tramo.', { estado: 400, tipo: 'peticion' });
+  const lineas = (Array.isArray(b.lineas) ? b.lineas : []).map(l => String(typeof l === 'string' ? l : l?.texto || '').replace(/\s+/g, ' ').trim().slice(0, 600)).filter(Boolean);
   if (!lineas.length) throw new ErrorEstudio('Este tramo no tiene texto que decir.', { estado: 400, tipo: 'peticion' });
-  if (lineas.reduce((n, l) => n + l.texto.length, 0) > 4000) throw new ErrorEstudio('Este tramo es demasiado largo para una sola llamada de voz.', { estado: 400, tipo: 'peticion' });
-
-  const texto = l => `${l.pensamiento ? '(inner thought) ' : ''}${l.texto}`;
-  const cuerpoTexto = hablantes.length === 1
-    ? `${instruccion(b.registro)}\n\n${lineas.map(texto).join('\n')}`
-    : `${instruccion(b.registro)}\n\nTTS the following conversation between ${etiquetas[0]} and ${etiquetas[1]}:\n${lineas.map(l => `${etiquetas[l.h]}: ${texto(l)}`).join('\n')}`;
-  const speechConfig = hablantes.length === 1
-    ? { voiceConfig: { prebuiltVoiceConfig: { voiceName: hablantes[0].voz } } }
-    : { multiSpeakerVoiceConfig: { speakerVoiceConfigs: hablantes.map((h, i) => ({ speaker: etiquetas[i], voiceConfig: { prebuiltVoiceConfig: { voiceName: h.voz } } })) } };
+  if (lineas.join(' ').length > 4000) throw new ErrorEstudio('Este tramo es demasiado largo para una sola llamada de voz.', { estado: 400, tipo: 'peticion' });
+  const cuerpoTexto = `${instruccion(b.registro, b.pensamiento === true)}\n\n${lineas.join('\n')}`;
+  const speechConfig = { voiceConfig: { prebuiltVoiceConfig: { voiceName: voz } } };
 
   const { cuenta, proyecto, token } = await google();
   // v1beta1: la versión con la que el estudio de anime llama a este modelo.

@@ -483,7 +483,7 @@ import * as MO from '../estudio/montaje.mjs';
 
 const VOCES = [{ nombre: 'Charon', genero: 'hombre' }, { nombre: 'Kore', genero: 'mujer' }, { nombre: 'Puck', genero: 'hombre' }, { nombre: 'Leda', genero: 'mujer' }];
 
-test('voces: cada personaje recibe una voz distinta según su sexo y la escena se parte en tramos de dos voces como mucho', () => {
+test('voces: cada personaje recibe una voz distinta según su sexo y la escena se parte en tramos de una sola voz', () => {
   const u = universoValido();
   u.personajes[0].sexo = 'hombre'; u.personajes[1].sexo = 'mujer';
   u.tieneSistema = true;
@@ -498,23 +498,31 @@ test('voces: cada personaje recibe una voz distinta según su sexo y la escena s
     { tipo: 'dialogo', personaje: 'extra', nombre: 'Criado', texto: 'Señor.' }] };
   VZ.asignarExtras(u, [escena], VOCES);
   const tramos = VZ.tramosDeEscena(escena, u);
-  assert.ok(tramos.every(t => t.voces.length <= 2));
-  assert.deepEqual(tramos.map(t => t.lineas.map(l => l.indice)), [[0, 1, 2], [3, 4]]);
-  assert.equal(tramos[0].lineas[2].pensamiento, true);
+  assert.deepEqual(tramos.map(t => t.lineas.map(l => l.indice)), [[0], [1], [2], [3], [4]], 'cada cambio de voz (o de pensar a hablar) es un tramo');
+  assert.equal(tramos[0].voz, u.personajes[0].voz);
+  assert.equal(tramos[1].voz, u.personajes[1].voz);
+  assert.equal(tramos[2].pensamiento, true);
+  const seguidas = VZ.tramosDeEscena({ lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'A.' }, { tipo: 'dialogo', personaje: 'c1', texto: 'B.' }] }, u);
+  assert.equal(seguidas.length, 1, 'líneas seguidas de la misma voz van juntas');
 });
 
 test('voces: la escena entera se genera por tramos y solo se guarda cuando están todos', async () => {
   const datos = { formulario, universo: universoValido(), ajustes: { registroVoz: 'dramatica' } };
   datos.universo.personajes[0].sexo = 'hombre'; datos.universo.personajes[1].sexo = 'mujer';
   const escena = { id: 'e1', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Hola.' }, { tipo: 'dialogo', personaje: 'c2', texto: 'Adiós.' }] };
-  respuestas = [{ cuerpo: { voces: VOCES } }, { cuerpo: { ruta: 'r/voz-e1-1.wav', url: 'u', segundos: 2.4 } }];
+  respuestas = [{ cuerpo: { voces: VOCES } }, { cuerpo: { ruta: 'r/voz-e1-1.wav', url: 'u', segundos: 2.4 } }, { cuerpo: { ruta: 'r/voz-e1-2.wav', url: 'u', segundos: 1.1 } }];
   let guardados = 0;
   await VZ.vozEscena({ proyectoId: 'pabc12345', datos, escena, control: crearControl(), guardar: async () => { guardados++; } });
   assert.equal(llamadas[1].url, '/api/voz');
   assert.equal(llamadas[1].cuerpo.registro, 'dramatica');
-  assert.equal(llamadas[1].cuerpo.hablantes.length, 2);
+  assert.equal(llamadas[1].cuerpo.voz, datos.universo.personajes[0].voz);
+  assert.deepEqual(llamadas[1].cuerpo.lineas, ['Hola.'], 'solo lo que se dice, sin nombres');
+  assert.equal(llamadas[2].cuerpo.voz, datos.universo.personajes[1].voz);
   assert.equal(llamadas[1].cuerpo.clave, 'voz-e1-1');
-  assert.deepEqual(escena.voz.tramos, [{ ruta: 'r/voz-e1-1.wav', segundos: 2.4, lineas: [0, 1] }]);
+  assert.deepEqual(escena.voz.tramos.map(t => t.lineas), [[0], [1]]);
+  assert.equal(escena.voz.version, VZ.VERSION_VOZ);
+  assert.ok(VZ.vozVigente(escena));
+  assert.ok(!VZ.vozVigente({ voz: { tramos: [{}] } }), 'las voces de la versión anterior se rehacen');
   assert.ok(guardados >= 1);
 });
 
@@ -543,7 +551,7 @@ test('música: un acto por bloque (la prueba de 3 min se parte en dos) y el brie
 test('montaje: cada escena dura su narración, los planos se reparten por peso, voces y música en su instante, sin duplicar el Sistema', () => {
   const datos = { formulario, universo: universoValido(), episodios: { 1: { estado: 'completo', musica: { 1: { ruta: 'r/m1.wav', brief: 'x' } }, bloques: [{ escenas: [
     { id: 'e1', titulo: 'La deuda', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Hola. ¿Me oyes?' }, { tipo: 'sistema', personaje: null, texto: 'Misión cumplida.' }],
-      voz: { tramos: [{ ruta: 'r/v1.wav', segundos: 2, lineas: [0], tiempos: [{ inicio: 0.1, fin: 1.9 }] }, { ruta: 'r/v2.wav', segundos: 1, lineas: [1] }] },
+      voz: { version: 2, tramos: [{ ruta: 'r/v1.wav', segundos: 2, lineas: [0], tiempos: [{ inicio: 0.1, fin: 1.9 }] }, { ruta: 'r/v2.wav', segundos: 1, lineas: [1] }] },
       planos: [{ peso: 3, tipo: 'accion', imagen: { ruta: 'r/p1.png' }, video: { ruta: 'r/p1.mp4' }, sistema: 'Misión cumplida.' }, { peso: 1, tipo: 'cobertura', imagen: { ruta: 'r/p2.png' } }] },
   ] }] } } };
   const h = MO.hojaDeVideo(datos, 1);

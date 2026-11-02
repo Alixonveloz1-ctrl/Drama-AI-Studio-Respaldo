@@ -23,7 +23,7 @@ import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './
 import { desglosar, revisar, escenasDelEpisodio, textoEscena, NOMBRE_ENCUADRE, nombreDe } from './desglose.mjs';
 import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
 import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
-import { vozEscena, REGISTROS, registroDe, segundosVoz } from './voces.mjs';
+import { vozEscena, REGISTROS, registroDe, segundosVoz, vozVigente } from './voces.mjs';
 import { generarMusica, actosDelEpisodio } from './musica.mjs';
 import { crearControl } from './texto.mjs';
 import { segundosDe, esEcchi } from './prompts.mjs';
@@ -104,7 +104,7 @@ function pintarAhora() {
   const sinVideo = deAccion.filter(x => !x.video || x.videoObsoleto).length;
   const conVideo = planos.filter(x => x.video && !x.videoObsoleto).length;
   const enCurso = planos.filter(x => x.operacion?.nombre).length;
-  const sinVoz = escenas.filter(e => !e.voz?.tramos?.length || e.voz.obsoleta).length;
+  const sinVoz = escenas.filter(e => !vozVigente(e)).length;
   const actos = actosDelEpisodio(ep);
   const sinMusica = actos.filter(a => !ep.musica?.[a.numero]?.ruta).length;
   const fichasQueFaltan = u.personajes.filter(x => !x.referencia).map(x => x.nombre);
@@ -128,7 +128,7 @@ function pintarAhora() {
     ${!sinDesglose && sinImagen ? `<button type="button" class="btn ancho" data-accion="lote">Generar todas las imágenes (${sinImagen})</button>` : ''}
     ${!sinDesglose && sinVideo ? `<button type="button" class="${sinImagen ? 'btn-sec' : 'btn ancho'}" data-accion="lote-videos">Generar todos los videos (${sinVideo})</button>` : ''}
     ${!sinDesglose && !sinImagen && !sinVideo ? `<p class="nota oro">Todas las imágenes y los videos de acción están hechos.</p>` : ''}
-    ${sinVoz ? `<button type="button" class="btn-sec" data-accion="lote-voces">Generar todas las voces (${sinVoz})</button>` : ''}
+    ${!sinDesglose && sinVoz ? `<button type="button" class="btn-sec" data-accion="lote-voces">Generar todas las voces (${sinVoz})</button>` : ''}
     ${planos.length ? `<button type="button" class="btn-sec" data-accion="revisar">Revisar la puesta en escena</button>` : ''}
     ${planos.length ? `<button type="button" class="btn-sec" data-accion="rehacer-todo">Rehacer todo el desglose</button>` : ''}
     <details class="plegado"><summary>Modelos y voces</summary>
@@ -144,12 +144,6 @@ function pintarAhora() {
       <summary><span class="escena-num">Escena ${n + 1}</span> ${escapar(e.titulo)} <span class="nota">· ${escapar(lugar)} · ≈ ${seg} s${e.planos?.length ? ` · ${e.planos.length} planos` : ''}</span></summary>
       ${Array.isArray(e.presentes) ? `<p class="nota">En escena desde el principio: ${escapar(e.presentes.map(id => nombreDe(u, id)).join(', ') || 'nadie')}</p>` : ''}
       <div class="lineas-compactas">${e.lineas.map(l => `<p><strong>${escapar(l.tipo === 'sistema' ? 'Sistema' : l.personaje === 'extra' ? (l.nombre || 'Extra') : fichaDe(u, l.personaje).nombre)}:</strong> ${escapar(l.texto)}</p>`).join('')}</div>
-      <div class="voz-escena">
-        ${(e.voz?.tramos || []).map(t => `<audio data-ruta="${escapar(t.ruta)}" controls preload="none"></audio>`).join('')}
-        ${e.voz?.obsoleta ? '<p class="aviso-obsoleta">Esta voz es de antes de cambiar una voz o el registro: rehazla.</p>' : ''}
-        ${caja('v-' + e.id)}
-        <button type="button" class="btn-sec" data-accion="voz" data-escena="${e.id}">${e.voz ? `Rehacer la voz de esta escena (≈ ${Math.round(segundosVoz(e))} s)` : 'Generar la voz de esta escena'}</button>
-      </div>
       ${caja('e-' + e.id)}
       <div class="planos">${(e.planos || []).map((x, i) => `
         <div class="plano${vertical ? ' lado' : ''}">
@@ -167,7 +161,13 @@ function pintarAhora() {
             <details class="plegado"><summary>Ver el prompt</summary><p class="corto">${escapar(x.prompt)}</p>${x.estado ? `<p class="corto">Estado: ${escapar(x.estado)}</p>` : ''}${x.cambio ? `<p class="corto">Cambio: ${escapar(x.cambio)}</p>` : ''}${x.movimiento ? `<p class="corto">Movimiento: ${escapar(x.movimiento)}</p>` : ''}</details>
           </div>
         </div>`).join('')}</div>
-      ${e.planos?.length ? `<button type="button" class="btn-sec" data-accion="redesglose" data-escena="${e.id}">Rehacer el desglose de esta escena</button>` : ''}
+      ${e.planos?.length ? `<div class="voz-escena"><strong>Voz de la escena</strong>
+        ${vozVigente(e) ? e.voz.tramos.map(t => `<audio data-ruta="${escapar(t.ruta)}" controls preload="none"></audio>`).join('') : ''}
+        ${e.voz && !vozVigente(e) ? '<p class="aviso-obsoleta">Esta voz es de una versión anterior o de antes de cambiar una voz: rehazla.</p>' : ''}
+        ${caja('v-' + e.id)}
+        <button type="button" class="btn-sec" data-accion="voz" data-escena="${e.id}">${vozVigente(e) ? `Rehacer la voz de esta escena (≈ ${Math.round(segundosVoz(e))} s)` : 'Generar la voz de esta escena'}</button>
+      </div>
+      <button type="button" class="btn-sec" data-accion="redesglose" data-escena="${e.id}">Rehacer el desglose de esta escena</button>` : ''}
     </details>`;
   }).join('')}
   <div class="seccion"><h3>Música</h3></div>
@@ -329,7 +329,7 @@ async function alPulsar(evento) {
     return trabajar('general', async o => {
       const cuenta = await tanda(escenas, {
         ...o, palabra: 'hechas',
-        yaHecho: e => Boolean(e.voz?.tramos?.length) && !e.voz.obsoleta,
+        yaHecho: e => vozVigente(e),
         hacer: (e, op) => vozEscena({ proyectoId: proyectoActual().id, datos: d, escena: e, control: op.control, aviso: op.aviso, guardar: o.guardar }),
         alAvanzar: () => pintarEscenas(),
       });

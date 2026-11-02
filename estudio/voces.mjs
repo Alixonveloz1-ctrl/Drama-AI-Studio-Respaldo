@@ -86,19 +86,26 @@ export function asignarExtras(u, escenas, voces) {
   return cambio;
 }
 
-// Parte la escena en tramos seguidos de como mucho dos voces distintas.
+// Versión de la forma de grabar: las voces hechas con la anterior (dos
+// hablantes por llamada) salían cruzadas y se rehacen.
+export const VERSION_VOZ = 2;
+export const vozVigente = e => Boolean(e?.voz?.tramos?.length) && !e.voz.obsoleta && e.voz.version === VERSION_VOZ;
+
+// Parte la escena en tramos: líneas seguidas de la MISMA voz (y del mismo
+// tipo: lo pensado va aparte, más suave). Así cada llamada tiene un solo
+// hablante y al modelo solo le llega lo que se dice.
 export function tramosDeEscena(escena, u) {
   const tramos = [];
   let actual = null;
   escena.lineas.forEach((l, indice) => {
     const voz = vozDe(u, l);
     if (!voz) throw new Error(`Falta la voz de ${l.tipo === 'sistema' ? 'el Sistema' : l.nombre || l.personaje}.`);
-    if (!actual || (!actual.voces.includes(voz) && actual.voces.length === 2)) {
-      actual = { voces: [], lineas: [] };
+    const pensamiento = l.tipo === 'pensamiento';
+    if (!actual || actual.voz !== voz || actual.pensamiento !== pensamiento) {
+      actual = { voz, pensamiento, lineas: [] };
       tramos.push(actual);
     }
-    if (!actual.voces.includes(voz)) actual.voces.push(voz);
-    actual.lineas.push({ hablante: actual.voces.indexOf(voz), texto: l.texto, pensamiento: l.tipo === 'pensamiento', indice });
+    actual.lineas.push({ texto: l.texto, indice });
   });
   return tramos;
 }
@@ -115,16 +122,27 @@ export async function vozEscena({ proyectoId, datos, escena, control, aviso, gua
   for (const [i, t] of tramos.entries()) {
     aviso?.(`voz de la escena · tramo ${i + 1} de ${tramos.length}…`);
     const r = await pedirMedio('/api/voz', {
-      proyecto: proyectoId, clave: `voz-${escena.id}-${i + 1}`, registro,
-      hablantes: t.voces.map(voz => ({ voz })),
-      lineas: t.lineas.map(l => ({ hablante: l.hablante, texto: l.texto, pensamiento: l.pensamiento })),
+      proyecto: proyectoId, clave: `voz-${escena.id}-${i + 1}`, registro, voz: t.voz, pensamiento: t.pensamiento,
+      lineas: t.lineas.map(l => l.texto),
     }, { control, aviso });
     recordarUrl(r.ruta, r.url);
     hechos.push({ ruta: r.ruta, segundos: r.segundos || 0, lineas: t.lineas.map(l => l.indice) });
   }
-  escena.voz = { tramos: hechos, registro, fecha: Date.now() };
+  escena.voz = { tramos: hechos, registro, fecha: Date.now(), version: VERSION_VOZ };
   await guardar();
   return escena.voz;
+}
+
+// Muestra de una voz, para oírla antes de elegirla (se guarda y se reutiliza).
+export const TEXTO_MUESTRA = 'Hola. Así sonaría mi voz en este drama. ¿Te convence, o prefieres otra?';
+export async function muestraDeVoz({ proyectoId, datos, voz, guardar }) {
+  datos.muestrasVoz ||= {};
+  if (datos.muestrasVoz[voz]) return datos.muestrasVoz[voz];
+  const r = await pedirMedio('/api/voz', { proyecto: proyectoId, clave: `muestra-${voz.toLowerCase()}`, registro: registroDe(datos), voz, lineas: [TEXTO_MUESTRA] });
+  recordarUrl(r.ruta, r.url);
+  datos.muestrasVoz[voz] = r.ruta;
+  await guardar();
+  return r.ruta;
 }
 
 export const segundosVoz = escena => (escena.voz?.tramos || []).reduce((n, t) => n + (t.segundos || 0), 0);

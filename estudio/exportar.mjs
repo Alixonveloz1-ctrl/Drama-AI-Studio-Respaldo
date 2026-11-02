@@ -12,7 +12,7 @@
 import { proyectoActual, guardar } from './proyectos.mjs';
 import { tanda, urlsDe } from './medios.mjs';
 import { escenasDelEpisodio } from './desglose.mjs';
-import { vozEscena } from './voces.mjs';
+import { vozEscena, vozVigente } from './voces.mjs';
 import { generarMusica } from './musica.mjs';
 import { alinearEscena } from './subtitulos.mjs';
 import { montar, estadoDelEpisodio } from './montaje.mjs';
@@ -134,7 +134,7 @@ async function alPulsar(evento) {
         const escenas = escenasDelEpisodio(d, numero);
         const cuenta = await tanda(escenas, {
           ...o, palabra: 'hechas',
-          yaHecho: e => Boolean(e.voz?.tramos?.length) && !e.voz.obsoleta,
+          yaHecho: e => vozVigente(e),
           hacer: (e, op) => vozEscena({ proyectoId: p.id, datos: d, escena: e, control: op.control, aviso: op.aviso, guardar: o.guardar }),
           alAvanzar: () => pintarExportar(),
         });

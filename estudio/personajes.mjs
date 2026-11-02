@@ -20,7 +20,7 @@ import { proyectoActual, guardar } from './proyectos.mjs';
 import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './medios.mjs';
 import { promptFichaPersonaje, promptVariante, direccionDeAspecto } from './imagenes.mjs';
 import { esEcchi } from './prompts.mjs';
-import { vocesDisponibles, asignarVoces } from './voces.mjs';
+import { vocesDisponibles, asignarVoces, muestraDeVoz } from './voces.mjs';
 import { escenasDelEpisodio } from './desglose.mjs';
 import { crearControl } from './texto.mjs';
 import { explicar } from './red.mjs';
@@ -112,7 +112,8 @@ function pintarAhora() {
           <h2>${escapar(x.nombre)}</h2>
           <p class="nota">${escapar(x.rol)} · ${x.edad} años</p>
           <p class="corto">${escapar(x.aspecto)}</p>
-          ${voces ? `<label class="campo-linea">Voz<select data-voz="${x.id}">${voces.map(v => `<option value="${v.nombre}"${v.nombre === x.voz ? ' selected' : ''}>${v.nombre}${v.genero ? ' · ' + v.genero : ''}</option>`).join('')}</select></label>` : `<p class="nota">Voz: ${escapar(x.voz || 'se asigna sola')}</p>`}
+          ${voces ? `<label class="campo-linea">Voz<select data-voz="${x.id}">${voces.map(v => `<option value="${v.nombre}"${v.nombre === x.voz ? ' selected' : ''}>${v.nombre}${v.genero ? ' · ' + v.genero : ''}</option>`).join('')}</select></label>
+          ${caja('m-' + x.id)}${d.muestrasVoz?.[x.voz] ? `<audio data-ruta="${escapar(d.muestrasVoz[x.voz])}" controls preload="none"></audio>` : `<button type="button" class="btn-sec" data-accion="oir-voz" data-id="${x.id}">Escuchar esta voz</button>`}` : `<p class="nota">Voz: ${escapar(x.voz || 'se asigna sola')}</p>`}
         </div>
       </div>
       ${caja('p-' + x.id)}
@@ -213,6 +214,14 @@ async function alPulsar(evento) {
   if (!u) return;
   const id = boton.dataset.id;
   if (accion === 'continuar') { document.dispatchEvent(new CustomEvent('ir-a', { detail: 'escenas' })); return; }
+  if (accion === 'oir-voz') {
+    const x = u.personajes.find(p => p.id === id);
+    return trabajar('m-' + id, async o => {
+      // Se graba una frase corta con esa voz y queda un reproductor debajo.
+      await muestraDeVoz({ proyectoId: proyectoActual().id, datos: d, voz: x.voz, guardar: () => guardar() });
+      return 'Muestra lista: pulsa reproducir.';
+    });
+  }
   if (accion === 'personaje') return trabajar('p-' + id, async o => { await fichaPersonaje(u.personajes.find(x => x.id === id), o); return 'Ficha lista.'; });
   if (accion === 'variante') return trabajar('v-' + id, async o => { await fichaVariante(u.variantes.find(x => x.id === id), o); return 'Variante lista.'; });
   if (accion === 'nueva-variante') {
