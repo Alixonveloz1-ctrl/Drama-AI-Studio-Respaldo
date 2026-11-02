@@ -689,7 +689,9 @@ test('imagen: la tela nunca se transparenta y esa regla va al final, después de
   await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'personaje-c2', prompt: 'Single clean CHARACTER REFERENCE still of Lin Xue, wearing a wet see-through white blouse and a black pencil skirt.', ecchi: true }), salida);
   assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
   const ultimo = llamadasVertex[0].cuerpo.contents[0].parts.at(-1).text;
-  assert.match(ultimo, /11\. MODESTY LINE \(always\): the chest is always covered by OPAQUE fabric/);
+  assert.match(ultimo, /11\. NO SEE-THROUGH \(always\): the fabric over the breasts is never see-through/);
+  assert.match(ultimo, /This is NOT a modesty rule and nothing else gets covered up: keep the low neckline, visible cleavage/, 'en ecchi no se tapa nada más');
+  assert.ok(ultimo.trim().endsWith('No text anywhere in the image.'));
   assert.match(ultimo, /wearing a wet opaque white blouse/, 'el saneado quita «see-through»');
   assert.ok(ultimo.trim().endsWith('No text anywhere in the image.'), 'el cierre va lo último');
   assert.ok(ultimo.lastIndexOf('FINAL CHECK') > ultimo.indexOf('Scene to show:'));

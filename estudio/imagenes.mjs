@@ -94,9 +94,9 @@ export function promptFichaPersonaje(p, formulario) {
     ? `a stunningly beautiful adult woman with the idol-like look of a top K-drama or C-drama actress, ${p.edad} years old`
     : p.sexo === 'hombre' ? `a handsome adult man with the look of a K-drama or C-drama leading man, ${p.edad} years old` : `a ${p.edad}-year-old adult`;
   const ecchi = esEcchi(formulario) && mujer
-    ? ' Her signature outfit flatters her curvy, alluring figure (form-fitting, as described), and she stands in a confident, attractive pose that shows her full silhouette.'
+    ? ' Her signature outfit is sexy and flatters her curvy, alluring figure: form-fitting, with a low neckline that shows cleavage and a short or high-slit skirt that shows her legs (as described). She stands in a confident, attractive pose that shows her full silhouette.'
     : '';
-  return `Single clean CHARACTER REFERENCE still of ${p.nombre}, ${belleza}, ${p.rol || 'character'}. ${p.appearance || p.aspecto}.${ecchi} ONE person only, full body from head to feet, relaxed natural standing pose, three-quarter front view, face clearly readable, hands visible, plain light-grey studio backdrop with soft flattering light. Wardrobe exactly as described, clean, dry and fully opaque (this is the reference outfit; wet or torn states belong to scenes). Hair exactly as described. No turnaround, no collage, no multiple poses, no expression sheet.`;
+  return `Single clean CHARACTER REFERENCE still of ${p.nombre}, ${belleza}, ${p.rol || 'character'}. ${p.appearance || p.aspecto}.${ecchi} ONE person only, full body from head to feet, relaxed natural standing pose, three-quarter front view, face clearly readable, hands visible, plain light-grey studio backdrop with soft flattering light. Wardrobe exactly as described, clean and dry (this is the reference outfit; wet or torn states belong to scenes). Hair exactly as described. No turnaround, no collage, no multiple poses, no expression sheet.`;
 }
 
 // El lugar, en texto, para cada plano (decisión del dueño: sin imagen del

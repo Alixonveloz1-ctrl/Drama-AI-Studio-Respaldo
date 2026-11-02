@@ -51,7 +51,11 @@ const CONTRATO_SITUACION = 'SCENE MAP above: the opening wide shot of this SAME 
 // Va al FINAL, después de la escena: la última instrucción es la que manda, y
 // una ficha que dice «blusa mojada» no puede ganarle (fallo visto: la tela se
 // transparentaba y Veo bloqueaba después el video de ese plano).
-const CIERRE = 'FINAL CHECK before rendering: the chest is always covered by OPAQUE fabric — no see-through, sheer or translucent clothing, wet fabric never turns transparent, and nothing of the breasts shows or pokes through the fabric (a bra or camisole is always worn underneath). Figure, legs and neckline stay as described. No text anywhere in the image.';
+const SIN_TRANSPARENCIAS = 'the fabric over the breasts is never see-through, sheer or translucent, and wet fabric never turns transparent: nothing shows or pokes through it (wear a bra or camisole underneath if needed).';
+// En ecchi esto NO es una regla de pudor (fallo visto: la regla anterior hacía
+// que el modelo abotonara blusas y alargara faldas, y se perdía el fan service).
+const CONTRAPESO_ECCHI = 'This is NOT a modesty rule and nothing else gets covered up: keep the low neckline, visible cleavage, open collar, form-fitting cut, short or high-slit skirt and bare legs exactly as alluring as the character is designed.';
+const cierre = ecchi => `FINAL CHECK before rendering: ${SIN_TRANSPARENCIAS} ${ecchi ? CONTRAPESO_ECCHI : 'Figure, legs and neckline stay as described.'} No text anywhere in the image.`;
 
 
 function reglas(nombres, formato, ecchi, direccion, conEstado) {
@@ -70,7 +74,7 @@ ${regla2}
 7. Format: ${formato === '16:9' ? '16:9 horizontal widescreen' : '9:16 vertical'} frame.
 8. REAL-WORLD SCALE AND ONE PERSPECTIVE: people and the place share the same floor, horizon line, vanishing points and light. Furniture keeps its real size next to people: a table top reaches an adult's hip (about 75 cm), a chair seat the knee, a door frame is a little taller than a person, a bed reaches mid-thigh. Something farther from the camera looks smaller by the SAME perspective that makes a farther person look smaller — never shrink the room to make a person look big, never make a person a giant in front of a tiny set. Characters are never composited over the location like cut-outs.
 9. LITERAL STAGING ONLY: a figure of speech about a feeling becomes an expression or a posture, never a special effect (no glowing eyes, no energy, no floating symbols). Real supernatural events stated as physically happening are allowed.
-11. MODESTY LINE (always): the chest is always covered by OPAQUE fabric — no see-through, sheer or translucent clothing, wet fabric never turns transparent, and nothing of the breasts shows or pokes through the fabric (a bra or camisole is always worn underneath). Figure, legs and neckline stay as described.${ecchi ? `
+11. NO SEE-THROUGH (always): ${SIN_TRANSPARENCIAS}${ecchi ? ' ' + CONTRAPESO_ECCHI : ''}${ecchi ? `
 10. ADULT ECCHI PROJECT: every character is an ADULT (18+) and clearly looks adult. Adult women keep their alluring figure and their figure-flattering wardrobe in every shot — it is part of their design. When the current scene describes a suggestive beat, render it confidently through pose, framing, wardrobe and expression; in grief or combat beats the emotion of the scene leads and no extra posing is added. Never nudity, never intimate parts.` : ''}${direccion ? `
 
 PROJECT LOOK (chosen by the owner — apply all of it):
@@ -159,7 +163,7 @@ module.exports = puerta({ metodos: ['POST'] }, async (req, { google }) => {
   if (b.base) {
     // Edición (variante de un personaje): se parte de la imagen de la madre.
     partes.push((await leerRef(b.base, 'la imagen del personaje original')).parte);
-    partes.push({ text: `BASE IMAGE above: this is ${String(b.nombreBase || 'the character')}. EDIT it: ${limpiarPrompt(prompt)}. Keep the SAME person — same face, facial proportions, eye colour, body proportions and distinctive traits — and the same clean reference-sheet composition (one person, full body, neutral background). Change ONLY what the edit asks.\n\n${CIERRE}` });
+    partes.push({ text: `BASE IMAGE above: this is ${String(b.nombreBase || 'the character')}. EDIT it: ${limpiarPrompt(prompt)}. Keep the SAME person — same face, facial proportions, eye colour, body proportions and distinctive traits — and the same clean reference-sheet composition (one person, full body, neutral background). Change ONLY what the edit asks.\n\n${cierre(b.ecchi === true)}` });
   } else {
     const tareas = [];
     if (b.continuidad) tareas.push({ ruta: b.continuidad, quePara: 'la imagen del plano anterior', contrato: CONTRATO_CONTINUIDAD });
@@ -183,7 +187,7 @@ module.exports = puerta({ metodos: ['POST'] }, async (req, { google }) => {
       fuera.length ? `PRESENT BUT OUT OF FRAME (still in the room; this framing leaves them out): ${fuera.join(', ')}.` : '',
       cambio ? `WHAT CHANGED SINCE THE PREVIOUS SHOT (show this new moment; do not repeat the previous frame's poses):\n${cambio}` : '',
     ].filter(Boolean).join('\n\n');
-    partes.push({ text: `${reglas(personajes.map(p => p.nombre), formato, b.ecchi === true, texto(b.direccion, 2500), Boolean(estado))}${escena ? '\n\n' + escena : ''}\n\nScene to show:\n${limpiarPrompt(prompt)}\n\n${CIERRE}` });
+    partes.push({ text: `${reglas(personajes.map(p => p.nombre), formato, b.ecchi === true, texto(b.direccion, 2500), Boolean(estado))}${escena ? '\n\n' + escena : ''}\n\nScene to show:\n${limpiarPrompt(prompt)}\n\n${cierre(b.ecchi === true)}` });
   }
   const msLectura = Date.now() - inicio;
 
