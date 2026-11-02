@@ -229,6 +229,8 @@ test('modelos y variables: los de la especificación, sin sustitutos', () => {
   assert.equal(c.modeloImagen, 'gemini-3.1-flash-image');
   assert.deepEqual(c.regionesImagen, ['us-central1', 'europe-west4', 'us-east4']);
   assert.equal(c.modeloVideo, 'veo-3.1-lite-generate-001');
+  assert.equal(c.modeloVoz, 'gemini-2.5-flash-preview-tts');
+  assert.equal(c.ubicacionVoz, 'us-central1');
   assert.equal(c.modeloMusica, 'lyria-002');
   assert.equal(c.ubicacionMusica, 'us-central1');
   assert.equal(c.modeloSubtitulos, 'latest_long');
@@ -245,7 +247,7 @@ test('modelos y variables: los de la especificación, sin sustitutos', () => {
   assert.equal(c.bucket, 'mi-bucket');
   const filas = google.describirAjustes();
   for (const variable of ['SCRIPT_MODEL', 'SCRIPT_LOCATION', 'IMAGE_MODEL', 'IMAGE_REGIONS', 'IMAGE_MODEL_LOCATIONS', 'VEO_MODEL', 'GCP_LOCATION',
-    'MUSIC_MODEL', 'MUSIC_LOCATION', 'STT_MODEL', 'STT_LANGUAGE', 'GCS_PREFIX', 'MONTAJE_JOB', 'MONTAJE_REGION']) {
+    'TTS_MODEL', 'TTS_LOCATION', 'MUSIC_MODEL', 'MUSIC_LOCATION', 'STT_MODEL', 'STT_LANGUAGE', 'GCS_PREFIX', 'MONTAJE_JOB', 'MONTAJE_REGION']) {
     assert.ok(filas.some(f => f.variable === variable), 'falta ' + variable + ' en APIs configuradas');
   }
   assert.equal(filas.find(f => f.variable === 'IMAGE_MODEL').propio, true);

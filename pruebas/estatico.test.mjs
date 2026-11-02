@@ -71,7 +71,9 @@ test('los endpoints corren en Node.js, nunca en Edge, y caben en el límite de V
 
 test('solo los identificadores de modelo de la especificación', () => {
   const permitidos = new Set(['gemini-3.1-pro-preview', 'gemini-3.1-flash-image', 'gemini-3-pro-image',
-    'veo-3.1-lite-generate-001', 'veo-3.1-fast-generate-001', 'veo-3.1-generate-001', 'lyria-002']);
+    'veo-3.1-lite-generate-001', 'veo-3.1-fast-generate-001', 'veo-3.1-generate-001', 'lyria-002',
+    // Voz: la especificación no da el identificador; es el del estudio de anime.
+    'gemini-2.5-flash-preview-tts']);
   for (const ruta of [...de('.js', '.mjs', '.cjs', '.html', '.py')]) {
     if (rel(ruta).startsWith('pruebas/')) continue;
     for (const [modelo] of readFileSync(ruta, 'utf8').matchAll(/\b(?:gemini|veo|lyria)-[a-z0-9][\w.-]*\b|\bimagen-\d[\w.-]*\b/g)) {

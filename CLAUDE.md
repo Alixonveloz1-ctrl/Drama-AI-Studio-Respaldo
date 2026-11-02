@@ -64,7 +64,12 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 - `instalador/` + `c` — instalador de Cloud Shell (idempotente, todo por número).
 - `pruebas/` — `node --test pruebas/*.test.*` y `python3 -m unittest discover -s pruebas -p 'test_*.py'`.
 
-## Pendiente de preguntar al dueño
+## Lo que no está en la especificación sale del estudio de anime
 
-- Fase 6: la especificación dice «Gemini TTS por Vertex AI» pero no da el
-  identificador exacto del modelo de voz. No inventarlo: preguntarlo.
+Antes de preguntar al dueño algo técnico (un modelo, un parámetro, un
+límite), búscalo en el repositorio del estudio de anime: él ya lo resolvió
+allí y espera que se lea. Ejemplo: la voz usa `gemini-2.5-flash-preview-tts`
+(Gemini TTS por Vertex AI, voces `gemini_*`), sacado de su `api/_lib/gcp.js`,
+pero SIN el modelo de respaldo que allí se usaba (regla 2.7).
+
+Pregunta solo lo que es una decisión suya (gustos, organización, cuentas).

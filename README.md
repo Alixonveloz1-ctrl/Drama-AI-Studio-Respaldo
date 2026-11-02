@@ -62,6 +62,8 @@ el valor resuelto de cada una):
 | `IMAGE_REGIONS` | `us-central1,europe-west4,us-east4` |
 | `IMAGE_MODEL_LOCATIONS` | JSON `{"modelo":"region"}` |
 | `VEO_MODEL` | `veo-3.1-lite-generate-001` |
+| `TTS_MODEL` | `gemini-2.5-flash-preview-tts` (Gemini TTS por Vertex AI, el del estudio de anime, sin respaldo automático) |
+| `TTS_LOCATION` | la de `GCP_LOCATION` |
 | `MUSIC_MODEL` | `lyria-002` |
 | `MUSIC_LOCATION` | según modelo |
 | `STT_MODEL` / `STT_LANGUAGE` | `latest_long` / `es-US` |
