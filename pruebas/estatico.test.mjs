@@ -61,7 +61,7 @@ test('los endpoints corren en Node.js, nunca en Edge, y caben en el límite de V
   }
   assert.ok(!existsSync(join(RAIZ, 'middleware.js')), 'sin middleware Edge');
   const vercel = JSON.parse(readFileSync(join(RAIZ, 'vercel.json'), 'utf8'));
-  const limites = { 'salud.js': 15, 'texto.js': 60, 'proyectos.js': 30, 'imagen.js': 60, 'urls.js': 30 };
+  const limites = { 'salud.js': 15, 'texto.js': 60, 'proyectos.js': 30, 'imagen.js': 60, 'urls.js': 30, 'video-inicio.js': 60, 'video-estado.js': 30 };
   for (const nombre of funciones) {
     assert.ok(vercel.functions[`api/${nombre}`], `vercel.json no fija maxDuration de api/${nombre}`);
     if (limites[nombre]) assert.equal(vercel.functions[`api/${nombre}`].maxDuration, limites[nombre], nombre);

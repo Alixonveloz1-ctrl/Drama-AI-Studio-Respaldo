@@ -28,6 +28,8 @@ let ocupado = null;      // { donde, control, aviso }
 let ultimoError = null;  // { donde, texto }
 let fila = Promise.resolve();
 
+export { MODELOS as MODELOS_IMAGEN };
+
 export function modeloImagen(datos) {
   return MODELOS.some(m => m.valor === datos?.ajustes?.modeloImagen) ? datos.ajustes.modeloImagen : MODELOS[0].valor;
 }

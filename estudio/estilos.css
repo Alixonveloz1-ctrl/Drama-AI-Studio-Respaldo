@@ -320,6 +320,7 @@ details.plegado summary { cursor: pointer; color: var(--oro); font-size: 14px; f
 .corto { font-size: 13px !important; line-height: 1.5 !important; color: var(--tenue) !important; }
 .marco { position: relative; border-radius: 12px; overflow: hidden; background: #0c0d13; border: 1px solid var(--linea); flex-shrink: 0; }
 .marco img { display: block; width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
+.marco video { display: block; width: 100%; height: 100%; object-fit: cover; background: #000; }
 .marco.vertical { width: 112px; aspect-ratio: 9 / 16; }
 .marco.vertical.mini { width: 72px; }
 .marco.vertical.ancho { width: 100%; max-width: 260px; margin: 0 auto 12px; }

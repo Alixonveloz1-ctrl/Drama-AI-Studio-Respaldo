@@ -529,3 +529,80 @@ test('urls: firma solo rutas del proyecto', async () => {
   await urls(peticion({ method: 'POST', url: '/api/urls', headers: { cookie: acceso.COOKIE + '=' + token() }, body: { proyecto: 'pimagen0001', ver: ['drama-studio/proyectos/pimagen0001/proyecto.json'] } }), malo);
   assert.equal(malo.statusCode, 400);
 });
+
+// ─── Video ───
+const videoReq = (ruta, body) => peticion({ method: 'POST', url: ruta, headers: { cookie: acceso.COOKIE + '=' + token() }, body });
+const OPERACION = 'projects/proyecto-prueba/locations/us-central1/publishers/google/models/veo-3.1-fast-generate-001/operations/1234-abcd';
+
+test('video-inicio: lee la imagen del bucket, pide 4 s con audio nativo, guarda en la carpeta del proyecto y respeta el modelo', async () => {
+  conCuentaDeServicio();
+  process.env.GCS_OUTPUT_BUCKET = 'bucket-prueba';
+  const { llamadasVertex } = vertexImagen(() => new Response(JSON.stringify({ name: OPERACION })));
+  const inicio = require('../api/video-inicio');
+  const salida = respuesta();
+  await inicio(videoReq('/api/video-inicio', { proyecto: 'pimagen0001', clave: 'video-e1-1', imagen: base + 'plano-e1-1.png', modelo: 'veo-3.1-fast-generate-001', formato: '16:9',
+    prompt: 'STYLE — ABSOLUTELY MANDATORY: preserve the exact rendering of the first frame. SHOT MOTION: Lin Feng slowly raises his head.', negativo: 'text, watermark' }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  assert.equal(salida.valor.operacion, OPERACION);
+  assert.equal(salida.valor.modelo, 'veo-3.1-fast-generate-001');
+  const { url, cuerpo } = llamadasVertex[0];
+  assert.match(url, /us-central1-aiplatform\.googleapis\.com\/.*\/models\/veo-3\.1-fast-generate-001:predictLongRunning$/);
+  assert.equal(cuerpo.parameters.durationSeconds, 4);
+  assert.equal(cuerpo.parameters.generateAudio, true);
+  assert.equal(cuerpo.parameters.aspectRatio, '16:9');
+  assert.equal(cuerpo.parameters.negativePrompt, 'text, watermark');
+  assert.equal(cuerpo.parameters.storageUri, 'gs://bucket-prueba/' + base + 'video-e1-1/');
+  assert.ok(cuerpo.instances[0].image.bytesBase64Encoded, 'la imagen del plano viaja desde el bucket');
+  assert.equal(cuerpo.instances[0].lastFrame, undefined, 'sin encadenado de fotogramas');
+  // Un modelo desconocido no se acepta tal cual: se usa el configurado.
+  const otro = respuesta();
+  await inicio(videoReq('/api/video-inicio', { proyecto: 'pimagen0001', clave: 'video-e1-1', imagen: base + 'plano-e1-1.png', modelo: 'veo-9', prompt: 'SHOT MOTION: Lin Feng slowly raises his head and looks away.' }), otro);
+  assert.match(llamadasVertex[1].url, /veo-3\.1-lite-generate-001:predictLongRunning$/);
+  // Sin imagen no se arranca; una imagen de otro proyecto se rechaza; un bloqueo es bloqueo.
+  const sin = respuesta();
+  await inicio(videoReq('/api/video-inicio', { proyecto: 'pimagen0001', clave: 'video-e1-1', prompt: 'SHOT MOTION: Lin Feng slowly raises his head and looks away.' }), sin);
+  assert.equal(sin.statusCode, 409);
+  const ajena = respuesta();
+  await inicio(videoReq('/api/video-inicio', { proyecto: 'pimagen0001', clave: 'video-e1-1', imagen: 'drama-studio/proyectos/potro00001/medios/x.png', prompt: 'SHOT MOTION: Lin Feng slowly raises his head and looks away.' }), ajena);
+  assert.equal(ajena.statusCode, 400);
+  vertexImagen(() => new Response(JSON.stringify({ error: { code: 400, message: 'The prompt could not be submitted. It was blocked by safety filters.' } }), { status: 400 }));
+  const bloqueo = respuesta();
+  await inicio(videoReq('/api/video-inicio', { proyecto: 'pimagen0001', clave: 'video-e1-1', imagen: base + 'plano-e1-1.png', prompt: 'SHOT MOTION: Lin Feng slowly raises his head and looks away.' }), bloqueo);
+  assert.equal(bloqueo.statusCode, 422);
+  assert.equal(bloqueo.valor.tipo, 'bloqueo');
+});
+
+test('video-estado: consulta en el modelo que arrancó; listo con URL de 7 días; bloqueos y rutas ajenas', async () => {
+  conCuentaDeServicio();
+  process.env.GCS_OUTPUT_BUCKET = 'bucket-prueba';
+  const estado = require('../api/video-estado');
+  let r = vertexImagen(() => new Response(JSON.stringify({ name: OPERACION, done: false })));
+  let salida = respuesta();
+  await estado(videoReq('/api/video-estado', { proyecto: 'pimagen0001', operacion: OPERACION }), salida);
+  assert.equal(salida.statusCode, 200);
+  assert.equal(salida.valor.listo, false);
+  assert.match(r.llamadasVertex[0].url, /veo-3\.1-fast-generate-001:fetchPredictOperation$/);
+  assert.equal(r.llamadasVertex[0].cuerpo.operationName, OPERACION);
+  const mp4 = `gs://bucket-prueba/${base}video-e1-1/987/sample_0.mp4`;
+  vertexImagen(() => new Response(JSON.stringify({ done: true, response: { videos: [{ gcsUri: mp4, mimeType: 'video/mp4' }] } })));
+  salida = respuesta();
+  await estado(videoReq('/api/video-estado', { proyecto: 'pimagen0001', operacion: OPERACION }), salida);
+  assert.equal(salida.valor.listo, true);
+  assert.equal(salida.valor.ruta, `${base}video-e1-1/987/sample_0.mp4`);
+  assert.match(salida.valor.url, /X-Goog-Expires=604800/);
+  for (const [respuestaVertex, codigo, tipo] of [
+    [() => new Response(JSON.stringify({ done: true, response: { raiMediaFilteredCount: 1, raiMediaFilteredReasons: ['person'] } })), 422, 'bloqueo'],
+    [() => new Response(JSON.stringify({ done: true, error: { code: 13, message: 'internal' } })), 502, 'veo_fallo'],
+    [() => new Response(JSON.stringify({ done: true, response: { videos: [{ gcsUri: 'gs://otro-bucket/x.mp4' }] } })), 502, 'veo_fallo'],
+    [() => new Response(JSON.stringify({ done: true, response: { videos: [{ gcsUri: 'gs://bucket-prueba/drama-studio/proyectos/potro00001/medios/x.mp4' }] } })), 400, 'peticion'],
+  ]) {
+    vertexImagen(respuestaVertex);
+    salida = respuesta();
+    await estado(videoReq('/api/video-estado', { proyecto: 'pimagen0001', operacion: OPERACION }), salida);
+    assert.equal(salida.statusCode, codigo, tipo);
+    assert.equal(salida.valor.tipo, tipo);
+  }
+  salida = respuesta();
+  await estado(videoReq('/api/video-estado', { proyecto: 'pimagen0001', operacion: 'projects/x/locations/y/publishers/google/models/otro/operations/1' }), salida);
+  assert.equal(salida.statusCode, 400);
+});

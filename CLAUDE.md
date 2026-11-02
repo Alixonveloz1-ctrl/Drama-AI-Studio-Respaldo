@@ -68,7 +68,7 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 2. Historia: formulario con el catálogo completo, tres ideas breves, universo y guion por bloques — **hecha y probada por el dueño (guion real de 3 min)**.
 3. Personajes, escenarios y sus referencias — **hecha** (fichas, variantes editando la madre, escenarios, lote).
 4. Escenas e imágenes: botón por plano, botón de lote y la cola con el manejo de cuotas — **hecha** (desglose del director de fotografía, revisión del director de arte cada 5 escenas, imagen por plano con continuidad).
-5. Videos: arranque, consulta y audio nativo sin voces.
+5. Videos: arranque, consulta y audio nativo sin voces — **hecha** (botón por plano, lote de los planos de acción, la operación de Veo se guarda y se sigue tras recargar).
 6. Voces, música y ambiente.
 7. Subtítulos alineados y montaje final en Cloud Run.
 8. Capa del Sistema, episodios encadenados y export ZIP.
@@ -84,8 +84,10 @@ Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seg
 - `api/texto.js` — único punto de texto (Gemini global, thinkingLevel LOW, corte a 50 s → «hazlo más pequeño»).
 - `api/proyectos.js` + `api/_lib/almacen.js` — proyectos en el bucket con versión (ifGenerationMatch), historial y 404 real.
 - `api/imagen.js` — contrato de estilo 9.1 primero, fichas con contrato 10.2 y continuidad 10.4 leídas del bucket en el servidor; guarda la imagen en el bucket y devuelve ruta + URL firmada. Bloqueo sin reintento.
+- `api/video-inicio.js` + `api/video-estado.js` — Veo: arranca con la imagen del plano leída del bucket (4 s, audio nativo, MP4 directo al bucket) y consulta en el modelo que arrancó; URL firmada de 7 días.
 - `api/urls.js` — URLs firmadas (ver) y comprobación de existencia, solo dentro de la carpeta del proyecto.
 - `estudio/` — módulos del navegador; `index.html` y `entrar/` las páginas.
+  - `videos.mjs` (prompt de video por bloques literales en orden, negativo como lista, operación guardada y reanudable).
   - `desglose.mjs` (director de fotografía: planos de acción/cobertura anclados al texto; director de arte: corrige sin borrar), `escenas.mjs` (pestaña Escenas).
   - `medios.mjs` (cola de imagen/video: esperas 60/120/180/240/300, tandas que saltan lo hecho), `imagenes.mjs` (prompts de imagen en inglés), `personajes.mjs` (pestaña Personajes).
   - `prompts.mjs` (textos de prompt), `guion.mjs` (ideas, universo, biblia, nota, bloques y su revisión),

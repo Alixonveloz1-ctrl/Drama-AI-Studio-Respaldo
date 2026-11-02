@@ -264,3 +264,66 @@ test('desglose: las escenas se agrupan sin pasarse de 5 escenas ni de 24 planos 
   assert.ok(grupos.every(g => g.length === 1 || g.reduce((n, e) => n + D.minimoPlanos(e), 0) <= 24));
   assert.equal(grupos.flat().length, 3);
 });
+
+// ─── Videos ───
+import * as V from '../estudio/videos.mjs';
+
+test('prompt de video: bloques literales en orden, encuadre bloqueado solo sin movimiento de cámara, escenario en una frase', () => {
+  const u = universoValido();
+  const interior = u.escenarios[1];
+  const p = V.promptVideo({ movimiento: 'Lin Feng grinds herbs in the mortar.' }, interior);
+  assert.ok(p.startsWith(V.ESTILO), 'el estilo va primero');
+  assert.ok(p.endsWith(V.AUDIO), 'el audio sin voces va al final');
+  const orden = [V.ESTILO, 'MOTION — CRITICAL: animate EXACTLY', V.ENCUADRE_BLOQUEADO, 'SETTING — already built into the input image, do not redesign it: Interior.', 'THIS SHOT IS INTERIOR', V.ACTUACION, 'SHOT MOTION: Lin Feng grinds herbs in the mortar.', V.AUDIO].map(t => p.indexOf(t));
+  assert.ok(orden.every(i => i >= 0), 'están todos los bloques: ' + orden);
+  assert.deepEqual([...orden].sort((a, b) => a - b), orden, 'y en su orden');
+  assert.ok(!p.includes('Herb shelves'), 'del escenario solo la primera frase');
+  const camara = V.promptVideo({ movimiento: 'The camera slowly pushes in on Lin Feng.' }, u.escenarios[0]);
+  assert.ok(!camara.includes('FRAMING — LOCKED'), 'si el director pide cámara, no se le contradice');
+  assert.ok(!camara.includes('THIS SHOT IS INTERIOR'));
+  const negativo = V.negativoVideo({ movimiento: '' }, interior);
+  assert.ok(!/\bno\b|\bdon't\b|\bnever\b/i.test(negativo), 'el negativo es una lista de cosas, sin órdenes');
+  assert.match(negativo, /zoom in/);
+  assert.match(negativo, /wet indoor floor/);
+  assert.ok(!V.negativoVideo({ movimiento: 'camera pans left' }, interior).includes('whip pan'));
+});
+
+test('video: la operación se guarda en cuanto arranca, se sigue tras «recargar» y al terminar queda el clip', async () => {
+  const datos = { formulario, universo: universoValido(), ajustes: { modeloVideo: 'veo-3.1-generate-001' } };
+  const escena = { id: 'e1', escenario: 'l1' };
+  const plano = { id: 'e1-1', tipo: 'accion', movimiento: 'Lin Feng stands up.', imagen: { ruta: 'r/plano-e1-1.png' } };
+  const guardados = [];
+  const guardar = async () => { guardados.push(JSON.parse(JSON.stringify(plano))); };
+  respuestas = [{ cuerpo: { operacion: 'op/1', modelo: 'veo-3.1-generate-001', segundos: 4 } }, { cuerpo: { listo: false } }];
+  // Primera vez: arranca, consulta una vez y se «recarga» (Detener).
+  const control = crearControl();
+  const avisos = [];
+  setTimeout(() => control.detener(), 700);
+  await assert.rejects(V.videoPlano({ proyectoId: 'pabc12345', datos, escena, plano, control, guardar, cada: 0.5, aviso: a => avisos.push(a) }), e => e.detenido);
+  assert.equal(llamadas[0].url, '/api/video-inicio');
+  assert.equal(llamadas[0].cuerpo.modelo, 'veo-3.1-generate-001');
+  assert.equal(llamadas[0].cuerpo.clave, 'video-e1-1');
+  assert.equal(llamadas[0].cuerpo.imagen, 'r/plano-e1-1.png');
+  assert.equal(guardados[0].operacion.nombre, 'op/1', 'la operación se guarda antes de esperar');
+  assert.equal(plano.operacion.nombre, 'op/1', 'Detener no tira la operación');
+  // Segunda vez: no arranca otra, sigue la misma.
+  llamadas = [];
+  respuestas = [{ cuerpo: { listo: true, ruta: 'r/video-e1-1/9/sample_0.mp4', url: 'https://firmada', modelo: 'veo-3.1-generate-001' } }];
+  const video = await V.videoPlano({ proyectoId: 'pabc12345', datos, escena, plano, control: crearControl(), guardar, cada: 0.25 });
+  assert.deepEqual(llamadas.map(l => l.url), ['/api/video-estado']);
+  assert.equal(llamadas[0].cuerpo.operacion, 'op/1');
+  assert.equal(video.ruta, 'r/video-e1-1/9/sample_0.mp4');
+  assert.equal(plano.operacion, undefined);
+  assert.equal(guardados.at(-1).video.ruta, 'r/video-e1-1/9/sample_0.mp4');
+});
+
+test('video: un bloqueo cierra la operación sin reintentar; sin imagen no se arranca', async () => {
+  const datos = { formulario, universo: universoValido() };
+  const plano = { id: 'e1-2', tipo: 'accion', movimiento: 'x', imagen: { ruta: 'r/p.png' }, operacion: { nombre: 'op/2', inicio: Date.now() } };
+  respuestas = [{ estado: 422, cuerpo: { error: 'Google bloqueó este video', tipo: 'bloqueo' } }];
+  await assert.rejects(V.videoPlano({ proyectoId: 'pabc12345', datos, escena: { id: 'e1', escenario: 'l1' }, plano, control: crearControl(), guardar: async () => {}, cada: 0.25 }), e => e.tipo === 'bloqueo');
+  assert.equal(llamadas.length, 1);
+  assert.equal(plano.operacion, undefined, 'se puede arrancar otro después de cambiar el plano');
+  await assert.rejects(V.videoPlano({ proyectoId: 'pabc12345', datos, escena: { id: 'e1', escenario: 'l1' }, plano: { id: 'e1-3' }, guardar: async () => {} }), /genérala primero/);
+  assert.equal(llamadas.length, 1);
+});

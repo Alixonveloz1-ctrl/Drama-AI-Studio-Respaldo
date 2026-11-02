@@ -41,7 +41,7 @@ export function crearControl() {
 }
 
 export function errorDetenido() {
-  return new ErrorRed('Detenido. Lo ya escrito está guardado; puedes seguir cuando quieras.', { detenido: true });
+  return new ErrorRed('Detenido. Lo ya hecho está guardado; puedes seguir cuando quieras.', { detenido: true });
 }
 
 async function esperar(segundos, control, aviso, motivo) {

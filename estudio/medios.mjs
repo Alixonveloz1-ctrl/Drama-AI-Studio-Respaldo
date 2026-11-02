@@ -49,8 +49,8 @@ export async function pedirMedio(ruta, cuerpo, { control, aviso } = {}) {
 }
 
 // ─── Tanda: uno a uno, saltando lo hecho, contando fallos ───
-export async function tanda(elementos, { hacer, yaHecho = () => false, control, aviso, alAvanzar }) {
-  const cuenta = { generados: 0, existian: 0, fallidos: 0, bloqueados: 0, errores: [] };
+export async function tanda(elementos, { hacer, yaHecho = () => false, control, aviso, alAvanzar, palabra = 'generadas' }) {
+  const cuenta = { generados: 0, existian: 0, fallidos: 0, bloqueados: 0, errores: [], palabra };
   for (let i = 0; i < elementos.length; i++) {
     if (control?.detenido) throw Object.assign(errorDetenido(), { cuenta });
     const el = elementos[i];
@@ -70,9 +70,9 @@ export async function tanda(elementos, { hacer, yaHecho = () => false, control, 
 }
 
 export function resumenTanda(c) {
-  const partes = [`${c.generados} generadas`];
+  const partes = [`${c.generados} ${c.palabra || 'generadas'}`];
   if (c.existian) partes.push(`${c.existian} ya existían`);
-  if (c.fallidos) partes.push(`${c.fallidos} fallaron${c.bloqueados ? ` (${c.bloqueados} bloqueadas por Google)` : ''}`);
+  if (c.fallidos) partes.push(`${c.fallidos} fallaron${c.bloqueados ? ` (${c.bloqueados} ${c.palabra === 'generados' ? 'bloqueados' : 'bloqueadas'} por Google)` : ''}`);
   return partes.join(' · ');
 }
 
@@ -90,14 +90,19 @@ export async function urlsDe(proyecto, rutas) {
   return Object.fromEntries(rutas.map(r => [r, cache.get(r)?.url]));
 }
 
-// Pone la URL a cada <img data-ruta> de un contenedor.
+// Pone la URL a cada <img data-ruta> y <video data-ruta> de un contenedor
+// (y la imagen de portada a los videos con data-portada).
 export async function cargarImagenes(contenedor, proyecto) {
-  const imagenes = [...contenedor.querySelectorAll('img[data-ruta]')];
-  if (!imagenes.length || !proyecto) return;
+  const medios = [...contenedor.querySelectorAll('img[data-ruta], video[data-ruta]')];
+  if (!medios.length || !proyecto) return;
+  const rutas = medios.flatMap(m => [m.dataset.ruta, m.dataset.portada].filter(Boolean));
   try {
-    const urls = await urlsDe(proyecto, imagenes.map(i => i.dataset.ruta));
-    for (const img of imagenes) if (urls[img.dataset.ruta] && img.src !== urls[img.dataset.ruta]) img.src = urls[img.dataset.ruta];
+    const urls = await urlsDe(proyecto, rutas);
+    for (const m of medios) {
+      if (m.dataset.portada && urls[m.dataset.portada] && m.poster !== urls[m.dataset.portada]) m.poster = urls[m.dataset.portada];
+      if (urls[m.dataset.ruta] && m.src !== urls[m.dataset.ruta]) m.src = urls[m.dataset.ruta];
+    }
   } catch (e) {
-    for (const img of imagenes) img.closest('.marco')?.setAttribute('data-error', 'No se pudo cargar la imagen: ' + explicar(e));
+    for (const m of medios) m.closest('.marco')?.setAttribute('data-error', 'No se pudo cargar: ' + explicar(e));
   }
 }

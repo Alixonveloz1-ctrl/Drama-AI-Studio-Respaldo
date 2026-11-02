@@ -15,6 +15,12 @@
     },
     "api/urls.js": {
       "maxDuration": 30
+    },
+    "api/video-inicio.js": {
+      "maxDuration": 60
+    },
+    "api/video-estado.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

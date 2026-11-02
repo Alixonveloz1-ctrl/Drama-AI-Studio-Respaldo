@@ -7,13 +7,17 @@
 //    en orden (cada plano usa el anterior como referencia de continuidad).
 //  · Una toma con un personaje recurrente se bloquea si falta su ficha: así
 //    no cambia de cara entre planos.
+//  · Cada plano tiene también «Generar video» (arranca de su imagen) y
+//    «Generar todos los videos» recorre los planos de acción sin clip. Una
+//    operación de Veo ya arrancada se guarda y se sigue tras recargar.
 //  · El dueño revisa después, mirando el resultado, y regenera lo que salió
 //    mal con el botón del plano.
 // ════════════════════════════════════════════════════════════════
 import { proyectoActual, guardar } from './proyectos.mjs';
 import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './medios.mjs';
 import { desglosar, revisar, escenasDelEpisodio, textoEscena } from './desglose.mjs';
-import { modeloImagen } from './personajes.mjs';
+import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
+import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
 import { crearControl } from './texto.mjs';
 import { segundosDe } from './prompts.mjs';
 import { contarPalabras } from './guion.mjs';
@@ -29,6 +33,14 @@ let fila = Promise.resolve();
 export function montarEscenas(contenedor) {
   raiz = contenedor;
   raiz.addEventListener('click', alPulsar);
+  // Selectores de modelo (plegados): se guardan en el proyecto.
+  raiz.addEventListener('change', evento => {
+    const campo = evento.target.closest('[name="modeloImagen"], [name="modeloVideo"]');
+    const d = proyectoActual()?.datos;
+    if (!campo || !d) return;
+    d.ajustes = { ...(d.ajustes || {}), [campo.name]: campo.value };
+    guardar().catch(e => avisar(explicar(e), 'error'));
+  });
 }
 
 export function pintarEscenas() {
@@ -69,6 +81,10 @@ function pintarAhora() {
   const planos = escenas.flatMap(e => e.planos || []);
   const sinDesglose = escenas.filter(e => !e.planos?.length).length;
   const sinImagen = planos.filter(x => !x.imagen || x.imagenObsoleta).length;
+  const deAccion = planos.filter(x => x.tipo === 'accion');
+  const sinVideo = deAccion.filter(x => !x.video || x.videoObsoleto).length;
+  const conVideo = planos.filter(x => x.video && !x.videoObsoleto).length;
+  const enCurso = planos.filter(x => x.operacion?.nombre).length;
   const fichasQueFaltan = u.personajes.filter(x => !x.referencia).map(x => x.nombre);
   const accion = planos.filter(x => x.tipo === 'accion').length;
   const vertical = d.formulario.formato !== '16:9';
@@ -77,13 +93,19 @@ function pintarAhora() {
   <div class="card">
     ${fichasQueFaltan.length ? `<div class="caja-error">Faltan las fichas de ${escapar(fichasQueFaltan.join(', '))}. Sin ellas no se generan los planos donde aparecen.
       <button type="button" class="btn-sec" data-accion="ir-personajes">Ir a Personajes</button></div>` : ''}
-    <p class="nota">${escenas.length} escenas · ${planos.length} planos${planos.length ? ` (${Math.round(100 * accion / planos.length)} % de acción) · ${planos.length - sinImagen} con imagen` : ''}</p>
+    <p class="nota">${escenas.length} escenas · ${planos.length} planos${planos.length ? ` (${Math.round(100 * accion / planos.length)} % de acción) · ${planos.length - sinImagen} con imagen · ${conVideo} con video` : ''}</p>
+    ${enCurso && !ocupado ? `<p class="nota oro">Hay ${enCurso} video(s) que Veo ya estaba haciendo: pulsa «Generar todos los videos» o el botón del plano para seguirlos sin pagar otro.</p>` : ''}
     ${informe ? `<p class="nota">${escapar(informe)}</p>` : ''}
     ${caja('general')}
     ${sinDesglose ? `<button type="button" class="btn ancho" data-accion="desglose">${planos.length ? `Desglosar las ${sinDesglose} escenas que faltan` : 'Hacer el desglose de planos'}</button>` : ''}
     ${!sinDesglose && sinImagen ? `<button type="button" class="btn ancho" data-accion="lote">Generar todas las imágenes (${sinImagen})</button>` : ''}
-    ${!sinDesglose && !sinImagen ? `<p class="nota oro">Todas las imágenes están hechas.</p>` : ''}
+    ${!sinDesglose && sinVideo ? `<button type="button" class="${sinImagen ? 'btn-sec' : 'btn ancho'}" data-accion="lote-videos">Generar todos los videos (${sinVideo})</button>` : ''}
+    ${!sinDesglose && !sinImagen && !sinVideo ? `<p class="nota oro">Todas las imágenes y los videos de acción están hechos.</p>` : ''}
     ${planos.length ? `<button type="button" class="btn-sec" data-accion="revisar">Revisar la puesta en escena</button>` : ''}
+    <details class="plegado"><summary>Modelos de imagen y video</summary>
+      <label class="campo-linea">Modelo de imagen<select name="modeloImagen">${MODELOS_IMAGEN.map(m => `<option value="${m.valor}"${m.valor === modeloImagen(d) ? ' selected' : ''}>${m.etiqueta}</option>`).join('')}</select></label>
+      <label class="campo-linea">Modelo de video<select name="modeloVideo">${MODELOS_VIDEO.map(m => `<option value="${m.valor}"${m.valor === modeloVideo(d) ? ' selected' : ''}>${m.etiqueta}</option>`).join('')}</select></label>
+    </details>
   </div>
   ${escenas.map((e, n) => {
     const lugar = u.escenarios.find(x => x.id === e.escenario)?.nombre || '';
@@ -94,7 +116,7 @@ function pintarAhora() {
       ${caja('e-' + e.id)}
       <div class="planos">${(e.planos || []).map((x, i) => `
         <div class="plano${vertical ? ' lado' : ''}">
-          <div class="marco ${vertical ? 'vertical' : 'horizontal'}">${x.imagen ? `<img data-ruta="${escapar(x.imagen.ruta)}" alt="Plano ${i + 1}" data-ver="1">` : `<span>Plano ${i + 1}</span>`}</div>
+          <div class="marco ${vertical ? 'vertical' : 'horizontal'}">${x.video ? `<video data-ruta="${escapar(x.video.ruta)}"${x.imagen ? ` data-portada="${escapar(x.imagen.ruta)}"` : ''} controls playsinline preload="metadata"></video>` : x.imagen ? `<img data-ruta="${escapar(x.imagen.ruta)}" alt="Plano ${i + 1}" data-ver="1">` : `<span>Plano ${i + 1}</span>`}</div>
           <div class="plano-datos">
             <span class="etiqueta ${x.tipo === 'accion' ? 'propio' : 'defecto'}">${x.tipo === 'accion' ? 'Acción · 4 s' : 'Cobertura · 1,5–3 s'}</span>
             <span class="nota">peso ${x.peso}${x.personajes.length ? ' · ' + escapar(x.personajes.map(id => fichaDe(u, id).nombre).join(', ')) : ''}</span>
@@ -102,7 +124,9 @@ function pintarAhora() {
             ${x.sistema ? `<p class="linea sistema"><span class="quien">Sistema</span>${escapar(x.sistema)}</p>` : ''}
             ${x.revision ? `<p class="aviso-obsoleta">Director de arte: ${escapar(conPunto(x.revision))}${x.imagenObsoleta ? ' La imagen quedó obsoleta.' : ''}</p>` : ''}
             ${caja('p-' + x.id)}
+            ${x.video && x.videoObsoleto ? `<p class="aviso-obsoleta">El video es de una imagen anterior.</p>` : ''}
             <button type="button" class="${x.imagen && !x.imagenObsoleta ? 'btn-sec' : 'btn ancho'}" data-accion="imagen" data-escena="${e.id}" data-plano="${i}">${x.imagen ? 'Regenerar imagen' : 'Generar imagen'}</button>
+            ${x.imagen && !x.imagenObsoleta ? `<button type="button" class="${x.video && !x.videoObsoleto ? 'btn-sec' : 'btn ancho'}" data-accion="video" data-escena="${e.id}" data-plano="${i}">${x.operacion?.nombre ? 'Seguir el video en curso' : x.video ? 'Regenerar video' : 'Generar video'}</button>` : ''}
             <details class="plegado"><summary>Ver el prompt</summary><p class="corto">${escapar(x.prompt)}</p>${x.movimiento ? `<p class="corto">Movimiento: ${escapar(x.movimiento)}</p>` : ''}</details>
           </div>
         </div>`).join('')}</div>
@@ -139,6 +163,7 @@ async function imagenPlano(escena, indice, opciones) {
   for (const a of r.avisos || []) avisar(a);
   plano.imagen = { ruta: r.ruta, modelo: r.modelo, fecha: Date.now() };
   plano.imagenObsoleta = false;
+  if (plano.video) plano.videoObsoleto = true;
   await guardar();
 }
 
@@ -214,6 +239,28 @@ async function alPulsar(evento) {
     const escena = escenas.find(e => e.id === boton.dataset.escena);
     const indice = Number(boton.dataset.plano);
     return trabajar('p-' + escena.planos[indice].id, async o => { await imagenPlano(escena, indice, o); return 'Imagen lista.'; });
+  }
+  if (accion === 'video') {
+    const escena = escenas.find(e => e.id === boton.dataset.escena);
+    const plano = escena.planos[Number(boton.dataset.plano)];
+    return trabajar('p-' + plano.id, async o => {
+      await videoPlano({ proyectoId: proyectoActual().id, datos: d, escena, plano, ...o });
+      return 'Video listo.';
+    });
+  }
+  if (accion === 'lote-videos') {
+    return trabajar('general', async o => {
+      const elementos = escenas.flatMap(e => (e.planos || []).filter(x => x.tipo === 'accion').map(x => ({ escena: e, plano: x })));
+      const cuenta = await tanda(elementos, {
+        ...o,
+        palabra: 'generados',
+        yaHecho: el => Boolean(el.plano.video) && !el.plano.videoObsoleto && !el.plano.operacion,
+        hacer: (el, op) => { op.aviso(`plano ${el.plano.id}…`); return videoPlano({ proyectoId: proyectoActual().id, datos: d, escena: el.escena, plano: el.plano, control: op.control, aviso: t => op.aviso(`plano ${el.plano.id} · ${t}`), guardar: o.guardar }); },
+        alAvanzar: () => pintarEscenas(),
+      });
+      if (cuenta.fallidos) ultimoError = { donde: 'general', texto: resumenTanda(cuenta) + '.\n' + cuenta.errores.map(e => `Plano ${e.elemento.plano.id}: ${e.texto}`).join('\n') };
+      return resumenTanda(cuenta) + '.';
+    });
   }
   if (accion === 'lote') {
     return trabajar('general', async o => {
