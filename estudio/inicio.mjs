@@ -44,7 +44,6 @@ function cablear() {
     abrirApis().then(s => ponerPunto(resumen(s))).catch(e => { ponerPunto('mal'); if (e.status === 401) mostrarErrorSesion(e); });
   });
   $('#btnProyectos').addEventListener('click', abrirProyectos);
-  $('#btnComprobar').addEventListener('click', () => $('#btnApis').click());
 }
 
 async function montar(usuario) {
@@ -53,7 +52,6 @@ async function montar(usuario) {
   try { panel = localStorage.getItem('drama.panel') || panel; } catch {}
   if (!document.getElementById('panel-' + panel)) panel = 'historia';
   irA(panel);
-  $('#correo-sesion').textContent = usuario.email || '';
   // La pantalla de "comprobando" se quita cuando la interfaz ya está
   // dibujada de verdad, no antes.
   $('#comprobando').hidden = true;

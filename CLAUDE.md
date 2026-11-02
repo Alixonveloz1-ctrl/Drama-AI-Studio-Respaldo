@@ -38,6 +38,28 @@ prompts a los modelos de imagen y video, en inglés; los de texto, en español.
 En las respuestas al dueño: qué arreglaste, qué está hecho y qué tiene que hacer
 él. Corto, sin rutas ni nombres de archivo.
 
+## Decisiones del dueño posteriores a la especificación
+
+Mandan sobre la especificación donde la contradigan:
+
+- **Aspecto visual:** negro y dorado, títulos con serifa, botones dorados en
+  píldora, iconos de línea y portada nocturna (según una imagen que él mandó).
+  Es SOLO el aspecto: la organización, los catálogos y las funciones siguen
+  como en la especificación.
+- **Público en vez de demografías:** las 6 demografías del anime (Shōnen,
+  Shōjo…) no se usan. Se usan 4 públicos: masculino, femenino, adulto y para
+  toda la familia (este último desactiva Ecchi, Harem, Harem inverso y Gore).
+  Los 21 géneros y los 23 subgéneros se conservan íntegros.
+- **Entrar:** un botón «Entrar con Google» (Firebase). Solo su cuenta.
+- **Nada redundante ni obvio en pantalla:** no mostrar el correo con el que
+  entró (es su app personal) ni dos botones que hagan lo mismo.
+- **Google Cloud:** proyecto `drama-ai-studio-513501`, SIN organización (en un
+  proyecto con organización no se pueden crear claves de cuenta de servicio).
+  Antes de tocar un proyecto, comprobar si tiene organización y avisar.
+- **La clave de la cuenta de servicio** la crea Cloud Shell (`./c`) y la
+  escribe él mismo en Vercel. Nunca pasa por el chat ni por el código.
+- La aplicación está en `https://drama-ai-studio-amber.vercel.app`.
+
 ## Construcción por fases
 
 Una fase, parar, y decirle qué puede probar desde el teléfono. Él dice si seguir.

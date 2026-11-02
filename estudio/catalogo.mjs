@@ -1,19 +1,20 @@
 // ════════════════════════════════════════════════════════════════
 // CATÁLOGO CREATIVO — íntegro, como pidió el dueño (sección 5).
 //
-// Los 17 géneros, los 23 subgéneros y las 6 demografías del estudio de anime
-// se conservan tal cual (mismos valores y etiquetas), y se añaden los 4
-// géneros propios del formato drama. No falta ninguno; una prueba lo vigila.
+// Los 17 géneros y los 23 subgéneros del estudio de anime se conservan tal
+// cual (mismos valores y etiquetas), y se añaden los 4 géneros propios del
+// formato drama. No falta ninguno; una prueba lo vigila. En lugar de las
+// demografías del anime, el drama usa 4 públicos (decisión del dueño).
 // El formulario de la Historia (fase 2) se construye a partir de aquí.
 // ════════════════════════════════════════════════════════════════
 
-export const DEMOGRAFIAS = [
-  { valor: 'shonen', etiqueta: 'Shōnen — Chicos adolescentes (acción, amistad, superación)' },
-  { valor: 'shojo', etiqueta: 'Shōjo — Chicas adolescentes (relaciones, emociones, romance)' },
-  { valor: 'seinen', etiqueta: 'Seinen — Hombres adultos (tramas complejas, temas maduros)' },
-  { valor: 'josei', etiqueta: 'Josei — Mujeres adultas (vida adulta realista, romance complejo)' },
-  { valor: 'kodomomuke', etiqueta: 'Kodomomuke — Infantil (historias sencillas con moraleja)' },
-  { valor: 'donghua', etiqueta: 'Donghua — Animación china (cultivación, wuxia, xianxia)' },
+// Público del drama. Sustituye a las 6 demografías del anime (Shōnen, Shōjo…),
+// que no encajan en un drama chino semirrealista: el dueño eligió estas cuatro.
+export const PUBLICOS = [
+  { valor: 'masculino', etiqueta: 'Público masculino — Revancha, ascenso de estatus, poder, sistemas y combates' },
+  { valor: 'femenino', etiqueta: 'Público femenino — Romance, el jefe poderoso, renacer para cambiar el destino, intriga de palacio' },
+  { valor: 'adulto', etiqueta: 'Público adulto — Tramas complejas, dilemas morales y temas duros' },
+  { valor: 'familia', etiqueta: 'Para toda la familia — Sin contenido adulto' },
 ];
 
 export const GENEROS = [
@@ -74,7 +75,7 @@ export const FORMATOS = [
 ];
 
 // Reglas heredadas del estudio de anime que siguen vigentes.
-export const SUBGENEROS_ADULTOS = ['ecchi', 'harem', 'harem_inverso', 'gore'];   // no con Kodomomuke
+export const SUBGENEROS_ADULTOS = ['ecchi', 'harem', 'harem_inverso', 'gore'];   // no con «Para toda la familia»
 export const PARES_EXCLUYENTES = [['harem', 'harem_inverso']];
 // Todos los personajes son adultos (18+); con «escolar», el entorno es
 // universitario o academia de adultos, nunca secundaria (sección 5.2).
