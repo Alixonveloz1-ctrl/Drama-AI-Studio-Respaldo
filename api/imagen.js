@@ -42,7 +42,10 @@ const CONTRATO_CONTINUIDAD = `This reference is the immediately preceding physic
 // El primer plano (general) de la escena: el mapa del lugar y de las personas.
 const CONTRATO_SITUACION = 'SCENE MAP above: the opening wide shot of this SAME scene. It fixes the room layout, furniture, props and where each person started. Keep that geography exactly; people and objects move only as the SCENE STATE below says. Do not copy its framing.';
 
-const CONTRATO_ESCENARIO = 'LOCATION REFERENCE above: this is the place where the scene happens. Keep its architecture, materials, palette and layout. Do not copy its framing; compose the shot the scene text asks for.';
+// El escenario es una REFERENCIA para reconstruir el lugar, no un fondo. Fallo
+// visto por el dueño: el lugar pegado detrás como un decorado plano, con una
+// mesa diminuta al fondo y el personaje gigante delante.
+const CONTRATO_ESCENARIO = 'LOCATION REFERENCE above: this is the place where the scene happens. It is NOT a background plate: never paste it behind the characters and never reuse its framing. REBUILD this same place as a real three-dimensional space — the same architecture, furniture, props, materials and palette, in the same layout — and film it from the camera position and lens of THIS shot. The people stand INSIDE that space, on its floor, at true human scale next to its furniture.';
 
 function reglas(nombres, formato, ecchi, direccion, conEstado) {
   // Con estado de escena, la regla 2 ya no dice «a nadie más»: esa frase,
@@ -58,7 +61,7 @@ ${regla2}
 5. Draw each character's hair exactly as described: never lengthen, shorten or restyle it.
 6. Faces clear and anatomically correct. No extra limbs, no extra fingers, no melted features.
 7. Format: ${formato === '16:9' ? '16:9 horizontal widescreen' : '9:16 vertical'} frame.
-8. People integrated into the environment at true real-world scale, feet grounded, sharing the perspective and light of the place.
+8. REAL-WORLD SCALE AND ONE PERSPECTIVE: people and the place share the same floor, horizon line, vanishing points and light. Furniture keeps its real size next to people: a table top reaches an adult's hip (about 75 cm), a chair seat the knee, a door frame is a little taller than a person, a bed reaches mid-thigh. Something farther from the camera looks smaller by the SAME perspective that makes a farther person look smaller — never shrink the room to make a person look big, never make a person a giant in front of a tiny set. Characters are never composited over the location like cut-outs.
 9. LITERAL STAGING ONLY: a figure of speech about a feeling becomes an expression or a posture, never a special effect (no glowing eyes, no energy, no floating symbols). Real supernatural events stated as physically happening are allowed.${ecchi ? `
 10. ADULT ECCHI PROJECT: every character is an ADULT (18+) and clearly looks adult. Adult women keep their alluring figure and their figure-flattering wardrobe in every shot — it is part of their design. When the current scene describes a suggestive beat, render it confidently through pose, framing, wardrobe and expression; in grief or combat beats the emotion of the scene leads and no extra posing is added. Never nudity, never intimate parts.` : ''}${direccion ? `
 

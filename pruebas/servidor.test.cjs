@@ -660,3 +660,19 @@ test('imagen: si Google tarda demasiado se corta con tiempo de sobra y lo dice; 
   assert.match(salida.valor.error, /No se reintenta solo, para no pagarla dos veces/);
   assert.equal(r.llamadasVertex.length, 1);
 });
+
+test('imagen: el escenario es una referencia para reconstruir el lugar a escala real, no un fondo pegado', async () => {
+  conCuentaDeServicio();
+  const { llamadasVertex } = vertexImagen(conImagen);
+  const imagen = require('../api/imagen');
+  const salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'plano-e1-1', prompt: 'Scene with Su Mei (long black hair, linen dress): wide shot, she stands beside the table.',
+    personajes: [{ nombre: 'Su Mei', ruta: base + 'personaje-c2.png' }], escenario: base + 'escenario-l1.png' }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  const partes = llamadasVertex[0].cuerpo.contents[0].parts;
+  const contrato = partes.find(p => /^LOCATION REFERENCE above/.test(p.text || ''))?.text || '';
+  assert.match(contrato, /It is NOT a background plate: never paste it behind the characters/);
+  assert.match(contrato, /REBUILD this same place as a real three-dimensional space/);
+  assert.match(partes.at(-1).text, /8\. REAL-WORLD SCALE AND ONE PERSPECTIVE:.*a table top reaches an adult's hip/);
+  assert.match(partes.at(-1).text, /never make a person a giant in front of a tiny set/);
+});

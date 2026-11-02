@@ -92,7 +92,7 @@ export function promptFichaPersonaje(p, formulario) {
 
 // Referencia de escenario: el lugar vacío, para fijar su arquitectura y su luz.
 export function promptEscenario(e) {
-  return `ESTABLISHING SHOT of a drama location: ${e.nombre}. ${e.description || e.descripcion}. ${e.interior ? 'Interior space.' : 'Exterior space.'} No people in frame. A wide production-design reference still that clearly shows the layout, architecture, materials, props and motivated light of the place.`;
+  return `ESTABLISHING SHOT of a drama location: ${e.nombre}. ${e.description || e.descripcion}. ${e.interior ? 'Interior space.' : 'Exterior space.'} No people in frame. A wide production-design reference still that clearly shows the layout, architecture, materials, props and motivated light of the place, filmed at eye level with a natural lens so every piece of furniture and every door has its true real-world size (a table at hip height, a door a little taller than a person).`;
 }
 
 // Variante: se edita la imagen de la madre con la descripción del cambio.

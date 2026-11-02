@@ -120,7 +120,8 @@ LITERALIDAD: una figura sobre un sentimiento («le hervía la sangre») se filma
 
 CADA "prompt" (EN INGLÉS):
 - Empieza con "Scene with [nombre] ([media frase de identidad: pelo y ropa del momento])" por cada personaje visible, o "Scene without people:".
-- Describe el encuadre (wide shot / medium shot / close-up / insert, igual que "encuadre"), dónde está cada visible en el lugar, la acción del instante del ancla y la luz.
+- Describe el encuadre (wide shot / medium shot / close-up / insert, igual que "encuadre"), desde dónde mira la cámara, dónde está cada visible en el lugar y a qué distancia de los muebles, la acción del instante del ancla y la luz.
+- Da referencias de tamaño reales: "standing beside the table, the tabletop at her hip", "kneeling next to the low bed". La gente y los muebles comparten suelo y perspectiva; nadie es un gigante delante de un decorado diminuto.
 - Personajes de lado, de tres cuartos o de espaldas: nunca mirando a cámara.
 - Prohibido: naked, nude, explicit, sexual, genitals, nipples. Sin texto, letras ni carteles legibles.
 "movimiento" (EN INGLÉS, solo en planos de acción): la acción breve y clara que hará el video, sin movimientos de cámara inventados.
