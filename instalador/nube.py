@@ -58,6 +58,26 @@ def _proyectos(s):
     return [p for p in lista if p.get('lifecycleState', 'ACTIVE') == 'ACTIVE' and p.get('projectId')]
 
 
+def _con_organizacion(proyecto):
+    return (proyecto.get('parent') or {}).get('type') == 'organization'
+
+
+def _tiene_instalacion(s, proyecto):
+    """¿Hay ya una instalación de Drama guardada en algún bucket del proyecto?"""
+    try:
+        buckets = s.gcloud('storage', 'buckets', 'list', '--project', proyecto, json_salida=True) or []
+    except FalloInstalacion:
+        return False
+    for b in buckets:
+        try:
+            anterior = leer_estado_bucket(s, _nombre_bucket(b))
+        except FalloInstalacion:
+            continue
+        if anterior and anterior.get('proyecto') == proyecto:
+            return True
+    return False
+
+
 def elegir_proyecto(s, estado):
     recordado = estado.get('proyecto')
     if recordado:
@@ -65,7 +85,21 @@ def elegir_proyecto(s, estado):
             s.decir(f'Proyecto: {recordado} (el de la instalación anterior)')
             return recordado
         s.decir(f'El proyecto de la instalación anterior ({recordado}) ya no está accesible con esta cuenta.')
-    proyectos = _proyectos(s)
+    todos = _proyectos(s)
+    # Un proyecto dentro de una organización suele tener prohibido crear claves
+    # de cuentas de servicio, y Vercel necesita una. No se ofrece.
+    proyectos = [p for p in todos if not _con_organizacion(p)]
+    ocultos = len(todos) - len(proyectos)
+    # Si ya hay una instalación (por ejemplo, Cloud Shell perdió su carpeta),
+    # se usa sin preguntar.
+    instalados = [p for p in proyectos if _tiene_instalacion(s, p['projectId'])]
+    if len(instalados) == 1:
+        elegido = instalados[0]
+        s.decir(f'Encontré tu instalación en el proyecto {elegido.get("name") or ""} ({elegido["projectId"]}).')
+        return elegido['projectId']
+    if ocultos:
+        s.decir(f'No muestro {ocultos} proyecto(s) que están dentro de una organización: '
+                'su regla de seguridad no deja crear la clave que necesita Vercel.')
     opciones = [f'{p.get("name") or p["projectId"]} ({p["projectId"]})' for p in proyectos]
     opciones.append('Crear un proyecto nuevo solo para Drama AI Studio')
     indice = s.elegir('¿En qué proyecto de Google Cloud instalo Drama AI Studio?', opciones)

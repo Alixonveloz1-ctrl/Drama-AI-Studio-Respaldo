@@ -33,7 +33,9 @@ class Mundo:
     """Estado simulado de Google Cloud, Firebase y Vercel."""
 
     def __init__(self):
-        self.proyectos = [{'projectId': PROYECTO, 'name': 'Mi proyecto', 'lifecycleState': 'ACTIVE'}]
+        self.proyectos = [{'projectId': PROYECTO, 'name': 'Mi proyecto', 'lifecycleState': 'ACTIVE'},
+                          {'projectId': 'de-una-organizacion', 'name': 'Drama AI Studio', 'lifecycleState': 'ACTIVE',
+                           'parent': {'type': 'organization', 'id': '123'}}]
         self.facturacion = True
         self.cuentas_servicio = set()
         self.buckets = {}
@@ -340,11 +342,19 @@ class RecorridoCompleto(BaseInstalador):
     def test_recupera_la_instalacion_si_cloud_shell_perdio_su_carpeta(self):
         instalar.instalar(SistemaFalso(self.mundo, ['1']))
         comun.ARCHIVO_ESTADO.unlink()
-        s = SistemaFalso(self.mundo, ['1'])   # solo el proyecto
+        s = SistemaFalso(self.mundo, [])   # encuentra la instalación sin preguntar
         estado = instalar.instalar(s)
         s.sin_respuestas_sobrantes()
         self.assertEqual(estado['bucket'], PROYECTO + '-drama-studio')
         self.assertEqual(len(self.mundo.buckets), 1)
+
+
+    def test_no_ofrece_proyectos_dentro_de_una_organizacion(self):
+        s = SistemaFalso(self.mundo, ['1'])
+        instalar.instalar(s)
+        menu = '\n'.join(s.texto)
+        self.assertNotIn('de-una-organizacion', menu)
+        self.assertIn('dentro de una organización', menu)
 
 
 class Fallos(BaseInstalador):
