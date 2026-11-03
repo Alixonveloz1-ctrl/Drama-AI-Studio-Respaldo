@@ -67,12 +67,9 @@ const cfg = {
   get modeloImagen()    { return leer('IMAGE_MODEL', MODELOS_IMAGEN[0]); },
   get regionesImagen()  { return leer('IMAGE_REGIONS', 'us-central1,europe-west4,us-east4').split(',').map(s => s.trim()).filter(Boolean); },
   get modeloVideo()     { return leer('VEO_MODEL', MODELOS_VIDEO[0]); },
-  // Voz: Gemini TTS por Vertex AI, el mismo modelo que usa el estudio de
-  // anime para sus voces gemini_*. SIN modelo de respaldo: allí, si el
-  // preferido fallaba, se cambiaba solo a otro; aquí eso está prohibido
-  // (regla 2.7). Si falla, se dice el error de Google tal cual.
-  get modeloVoz()       { return leer('TTS_MODEL', 'gemini-2.5-flash-preview-tts'); },
-  get ubicacionVoz()    { return leer('TTS_LOCATION', this.region); },
+  // Voz: Chirp 3 HD de Text-to-Speech (decisión del dueño; lo mismo que
+  // acabó usando su estudio de anime). SIN motor de respaldo (regla 2.7).
+  get idiomaVoz()       { return leer('TTS_LANGUAGE', 'es-US'); },
   get modeloMusica()    { return leer('MUSIC_MODEL', 'lyria-002'); },
   get ubicacionMusica() { return leer('MUSIC_LOCATION', UBICACION_MUSICA_BASE[this.modeloMusica] || this.region); },
   get modeloSubtitulos(){ return leer('STT_MODEL', 'latest_long'); },
@@ -100,8 +97,7 @@ function describirAjustes() {
     fila('Región por modelo de imagen', 'IMAGE_MODEL_LOCATIONS', JSON.stringify(ubicacionesImagen())),
     fila('Video (predeterminado)', 'VEO_MODEL', cfg.modeloVideo, { opciones: MODELOS_VIDEO, ubicacion: cfg.region }),
     fila('Región general (video)', 'GCP_LOCATION', cfg.region),
-    fila('Voces (Gemini TTS)', 'TTS_MODEL', cfg.modeloVoz),
-    fila('Región de las voces', 'TTS_LOCATION', cfg.ubicacionVoz),
+    fila('Voces (Chirp 3 HD): idioma', 'TTS_LANGUAGE', cfg.idiomaVoz),
     fila('Música', 'MUSIC_MODEL', cfg.modeloMusica),
     fila('Región de la música', 'MUSIC_LOCATION', cfg.ubicacionMusica),
     fila('Subtítulos: modelo', 'STT_MODEL', cfg.modeloSubtitulos),

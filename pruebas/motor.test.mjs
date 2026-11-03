@@ -507,14 +507,14 @@ test('voces: cada personaje recibe una voz distinta según su sexo y la escena s
 });
 
 test('voces: la escena entera se genera por tramos y solo se guarda cuando están todos', async () => {
-  const datos = { formulario, universo: universoValido(), ajustes: { registroVoz: 'dramatica' } };
+  const datos = { formulario, universo: universoValido() };
   datos.universo.personajes[0].sexo = 'hombre'; datos.universo.personajes[1].sexo = 'mujer';
   const escena = { id: 'e1', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Hola.' }, { tipo: 'dialogo', personaje: 'c2', texto: 'Adiós.' }] };
   respuestas = [{ cuerpo: { voces: VOCES } }, { cuerpo: { ruta: 'r/voz-e1-1.wav', url: 'u', segundos: 2.4 } }, { cuerpo: { ruta: 'r/voz-e1-2.wav', url: 'u', segundos: 1.1 } }];
   let guardados = 0;
   await VZ.vozEscena({ proyectoId: 'pabc12345', datos, escena, control: crearControl(), guardar: async () => { guardados++; } });
   assert.equal(llamadas[1].url, '/api/voz');
-  assert.equal(llamadas[1].cuerpo.registro, 'dramatica');
+  assert.equal(llamadas[1].cuerpo.registro, undefined, 'Chirp no lleva instrucción de estilo');
   assert.equal(llamadas[1].cuerpo.voz, datos.universo.personajes[0].voz);
   assert.deepEqual(llamadas[1].cuerpo.lineas, ['Hola.'], 'solo lo que se dice, sin nombres');
   assert.equal(llamadas[2].cuerpo.voz, datos.universo.personajes[1].voz);
@@ -523,6 +523,7 @@ test('voces: la escena entera se genera por tramos y solo se guarda cuando está
   assert.equal(escena.voz.version, VZ.VERSION_VOZ);
   assert.ok(VZ.vozVigente(escena));
   assert.ok(!VZ.vozVigente({ voz: { tramos: [{}] } }), 'las voces de la versión anterior se rehacen');
+  assert.ok(!VZ.vozVigente({ voz: { tramos: [{}], version: 2 } }), 'las voces de Gemini se rehacen con Chirp');
   assert.ok(guardados >= 1);
 });
 
@@ -551,7 +552,7 @@ test('música: un acto por bloque (la prueba de 3 min se parte en dos) y el brie
 test('montaje: cada escena dura su narración, los planos se reparten por peso, voces y música en su instante, sin duplicar el Sistema', () => {
   const datos = { formulario, universo: universoValido(), episodios: { 1: { estado: 'completo', musica: { 1: { ruta: 'r/m1.wav', brief: 'x' } }, bloques: [{ escenas: [
     { id: 'e1', titulo: 'La deuda', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Hola. ¿Me oyes?' }, { tipo: 'sistema', personaje: null, texto: 'Misión cumplida.' }],
-      voz: { version: 2, tramos: [{ ruta: 'r/v1.wav', segundos: 2, lineas: [0], tiempos: [{ inicio: 0.1, fin: 1.9 }] }, { ruta: 'r/v2.wav', segundos: 1, lineas: [1] }] },
+      voz: { version: VZ.VERSION_VOZ, tramos: [{ ruta: 'r/v1.wav', segundos: 2, lineas: [0], tiempos: [{ inicio: 0.1, fin: 1.9 }] }, { ruta: 'r/v2.wav', segundos: 1, lineas: [1] }] },
       planos: [{ peso: 3, tipo: 'accion', imagen: { ruta: 'r/p1.png' }, video: { ruta: 'r/p1.mp4' }, sistema: 'Misión cumplida.' }, { peso: 1, tipo: 'cobertura', imagen: { ruta: 'r/p2.png' } }] },
   ] }] } } };
   const h = MO.hojaDeVideo(datos, 1);

@@ -23,7 +23,7 @@ import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './
 import { desglosar, revisar, escenasDelEpisodio, textoEscena, NOMBRE_ENCUADRE, nombreDe } from './desglose.mjs';
 import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
 import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
-import { vozEscena, REGISTROS, registroDe, segundosVoz, vozVigente } from './voces.mjs';
+import { vozEscena, segundosVoz, vozVigente } from './voces.mjs';
 import { generarMusica, actosDelEpisodio } from './musica.mjs';
 import { crearControl } from './texto.mjs';
 import { segundosDe, esEcchi } from './prompts.mjs';
@@ -50,14 +50,10 @@ export function montarEscenas(contenedor) {
   }, true);
   // Selectores de modelo (plegados): se guardan en el proyecto.
   raiz.addEventListener('change', evento => {
-    const campo = evento.target.closest('[name="modeloImagen"], [name="modeloVideo"], [name="registroVoz"]');
+    const campo = evento.target.closest('[name="modeloImagen"], [name="modeloVideo"]');
     const d = proyectoActual()?.datos;
     if (!campo || !d) return;
     d.ajustes = { ...(d.ajustes || {}), [campo.name]: campo.value };
-    if (campo.name === 'registroVoz') {
-      for (const e of escenasDelEpisodio(d, d.episodioActual || 1)) if (e.voz && e.voz.registro !== campo.value) e.voz.obsoleta = true;
-      pintarEscenas();
-    }
     guardar().catch(e => avisar(explicar(e), 'error'));
   });
 }
@@ -131,8 +127,7 @@ function pintarAhora() {
     ${!sinDesglose && sinVoz ? `<button type="button" class="btn-sec" data-accion="lote-voces">Generar todas las voces (${sinVoz})</button>` : ''}
     ${planos.length ? `<button type="button" class="btn-sec" data-accion="revisar">Revisar la puesta en escena</button>` : ''}
     ${planos.length ? `<button type="button" class="btn-sec" data-accion="rehacer-todo">Rehacer todo el desglose</button>` : ''}
-    <details class="plegado"><summary>Modelos y voces</summary>
-      <label class="campo-linea">Registro de las voces<select name="registroVoz">${REGISTROS.map(r => `<option value="${r.valor}"${r.valor === registroDe(d) ? ' selected' : ''}>${r.etiqueta}</option>`).join('')}</select></label>
+    <details class="plegado"><summary>Modelos</summary>
       <label class="campo-linea">Modelo de imagen<select name="modeloImagen">${MODELOS_IMAGEN.map(m => `<option value="${m.valor}"${m.valor === modeloImagen(d) ? ' selected' : ''}>${m.etiqueta}</option>`).join('')}</select></label>
       <label class="campo-linea">Modelo de video<select name="modeloVideo">${MODELOS_VIDEO.map(m => `<option value="${m.valor}"${m.valor === modeloVideo(d) ? ' selected' : ''}>${m.etiqueta}</option>`).join('')}</select></label>
     </details>

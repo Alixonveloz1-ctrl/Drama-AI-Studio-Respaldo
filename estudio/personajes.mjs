@@ -20,7 +20,7 @@ import { proyectoActual, guardar } from './proyectos.mjs';
 import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './medios.mjs';
 import { promptFichaPersonaje, promptVariante, direccionDeAspecto } from './imagenes.mjs';
 import { esEcchi } from './prompts.mjs';
-import { vocesDisponibles, asignarVoces, muestraDeVoz } from './voces.mjs';
+import { vocesDisponibles, asignarVoces, muestraDeVoz, muestraGuardada } from './voces.mjs';
 import { escenasDelEpisodio } from './desglose.mjs';
 import { crearControl } from './texto.mjs';
 import { explicar } from './red.mjs';
@@ -115,7 +115,7 @@ function pintarAhora() {
           <p class="nota">${escapar(x.rol)} · ${x.edad} años</p>
           <p class="corto">${escapar(x.aspecto)}</p>
           ${voces ? `<label class="campo-linea">Voz<select data-voz="${x.id}">${voces.map(v => `<option value="${v.nombre}"${v.nombre === x.voz ? ' selected' : ''}>${v.nombre}${v.genero ? ' · ' + v.genero : ''}</option>`).join('')}</select></label>
-          ${caja('m-' + x.id)}${d.muestrasVoz?.[x.voz] ? `<audio data-ruta="${escapar(d.muestrasVoz[x.voz])}" controls preload="none"></audio>` : `<button type="button" class="btn-sec" data-accion="oir-voz" data-id="${x.id}">Escuchar esta voz</button>`}` : `<p class="nota">Voz: ${escapar(x.voz || 'se asigna sola')}</p>`}
+          ${caja('m-' + x.id)}${muestraGuardada(d, x.voz) ? `<audio data-ruta="${escapar(muestraGuardada(d, x.voz))}" controls preload="none"></audio>` : `<button type="button" class="btn-sec" data-accion="oir-voz" data-id="${x.id}">Escuchar esta voz</button>`}` : `<p class="nota">Voz: ${escapar(x.voz || 'se asigna sola')}</p>`}
         </div>
       </div>
       ${caja('p-' + x.id)}

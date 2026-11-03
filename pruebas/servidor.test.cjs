@@ -229,8 +229,7 @@ test('modelos y variables: los de la especificación, sin sustitutos', () => {
   assert.equal(c.modeloImagen, 'gemini-3.1-flash-image');
   assert.deepEqual(c.regionesImagen, ['us-central1', 'europe-west4', 'us-east4']);
   assert.equal(c.modeloVideo, 'veo-3.1-lite-generate-001');
-  assert.equal(c.modeloVoz, 'gemini-2.5-flash-preview-tts');
-  assert.equal(c.ubicacionVoz, 'us-central1');
+  assert.equal(c.idiomaVoz, 'es-US');
   assert.equal(c.modeloMusica, 'lyria-002');
   assert.equal(c.ubicacionMusica, 'us-central1');
   assert.equal(c.modeloSubtitulos, 'latest_long');
@@ -247,7 +246,7 @@ test('modelos y variables: los de la especificación, sin sustitutos', () => {
   assert.equal(c.bucket, 'mi-bucket');
   const filas = google.describirAjustes();
   for (const variable of ['SCRIPT_MODEL', 'SCRIPT_LOCATION', 'IMAGE_MODEL', 'IMAGE_REGIONS', 'IMAGE_MODEL_LOCATIONS', 'VEO_MODEL', 'GCP_LOCATION',
-    'TTS_MODEL', 'TTS_LOCATION', 'MUSIC_MODEL', 'MUSIC_LOCATION', 'STT_MODEL', 'STT_LANGUAGE', 'GCS_PREFIX', 'MONTAJE_JOB', 'MONTAJE_REGION']) {
+    'TTS_LANGUAGE', 'MUSIC_MODEL', 'MUSIC_LOCATION', 'STT_MODEL', 'STT_LANGUAGE', 'GCS_PREFIX', 'MONTAJE_JOB', 'MONTAJE_REGION']) {
     assert.ok(filas.some(f => f.variable === variable), 'falta ' + variable + ' en APIs configuradas');
   }
   assert.equal(filas.find(f => f.variable === 'IMAGE_MODEL').propio, true);
@@ -732,20 +731,22 @@ test('voz: las voces se piden a Google (con su género) y cada tramo es una sola
   await voz(pedirA('/api/voz', null, 'GET'), lista);
   assert.equal(lista.statusCode, 200, JSON.stringify(lista.valor));
   assert.deepEqual(lista.valor.voces, [{ nombre: 'Charon', genero: 'hombre' }, { nombre: 'Kore', genero: 'mujer' }]);
-  const pcm = Buffer.alloc(24000 * 2 * 3).toString('base64');
-  ({ vistas } = mundoGoogle(() => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/L16;codec=pcm;rate=24000', data: pcm } }] } }] }))));
+  // Chirp devuelve LINEAR16 ya con cabecera WAV.
+  const wav3 = pcmAWav(Buffer.alloc(24000 * 2 * 3)).toString('base64');
+  ({ vistas } = mundoGoogle(() => new Response(JSON.stringify({ audioContent: wav3 }))));
   const salida = respuesta();
-  await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', registro: 'dramatica', voz: 'Kore', lineas: ['¡Arrodíllate!', 'Hoy pagas la deuda.'] }), salida);
+  await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', voz: 'Kore', lineas: ['¡Arrodíllate!', 'Tienes 3 días', 'Q-Que dices?'] }), salida);
   assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
   assert.equal(salida.valor.segundos, 3);
   assert.equal(salida.valor.ruta, base + 'voz-e1-1.wav');
-  assert.match(vistas[0].url, /\/v1beta1\/projects\/.*\/models\/gemini-2\.5-flash-preview-tts:generateContent$/);
+  assert.equal(vistas[0].url, 'https://texttospeech.googleapis.com/v1/text:synthesize');
   const cuerpo = vistas[0].cuerpo;
-  assert.equal(cuerpo.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName, 'Kore');
-  const texto = cuerpo.contents[0].parts[0].text;
-  assert.ok(texto.startsWith(voz.instruccion('dramatica')), 'la misma instrucción de estilo en todas las llamadas');
-  assert.ok(texto.endsWith('\n\n¡Arrodíllate!\nHoy pagas la deuda.'), 'al modelo solo le llega lo que se dice');
-  assert.ok(!/Speaker|Kore:/.test(texto), 'ningún nombre ni etiqueta en el texto');
+  assert.deepEqual(cuerpo.voice, { languageCode: 'es-US', name: 'es-US-Chirp3-HD-Kore' });
+  assert.equal(cuerpo.audioConfig.audioEncoding, 'LINEAR16');
+  assert.equal(cuerpo.audioConfig.speakingRate, undefined, 'Chirp no recibe velocidad (estira el audio)');
+  assert.equal(cuerpo.audioConfig.pitch, undefined);
+  assert.equal(cuerpo.input.text, '¡Arrodíllate! Tienes tres días. Que dices?', 'solo lo que se dice, ya en palabras y con su pausa');
+  assert.ok(!/Speaker|Kore:|\[/.test(cuerpo.input.text), 'ningún nombre, etiqueta ni instrucción en el texto');
   const sinVoz = respuesta();
   await voz(pedirA('/api/voz', { proyecto: 'pimagen0001', clave: 'voz-e1-1', lineas: ['x'] }), sinVoz);
   assert.equal(sinVoz.statusCode, 400);
@@ -857,4 +858,13 @@ test('montaje: sube el trabajo, lanza el montador con su carpeta y salida, y con
   const otra = respuesta();
   await montaje(pedirA('/api/montaje', { accion: 'estado', proyecto: 'pimagen0001', operacion: OP, carpeta: 'drama-studio/proyectos/potro00001/montaje/video-ep01', ruta: base + 'episodio-01.mp4' }), otra);
   assert.equal(otra.statusCode, 400);
+});
+
+test('voz: números, horas, dinero y tartamudeos llegan en palabras (Chirp lee literal)', () => {
+  const { normalizarParaVoz: n } = require('../api/_lib/habla');
+  assert.equal(n('Tienes 3 días y +10 de fuerza.'), 'Tienes tres días y más diez de fuerza.');
+  assert.equal(n('Q-Que dijiste? Pe-pero... a las 21:00'), 'Que dijiste? Pe, pero... a las veintiuna');
+  assert.equal(n('Cuesta $1500, el 40%.'), 'Cuesta mil quinientos dólares, el cuarenta por ciento.');
+  assert.equal(n('Ana-María, lote 07, 152.000 monedas.'), 'Ana-María, lote cero siete, ciento cincuenta y dos mil monedas.');
+  assert.equal(n('Nivel 21 y 1.000.000 de puntos.'), 'Nivel veintiuno y un millón de puntos.');
 });

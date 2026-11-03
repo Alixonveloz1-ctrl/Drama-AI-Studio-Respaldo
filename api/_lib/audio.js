@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════════════════
 // AUDIO — utilidades para los WAV que devuelve Google.
-//  · Gemini TTS devuelve PCM crudo (16 bits, mono, 24 kHz): se envuelve en
-//    un WAV para poder escucharlo y montarlo.
+//  · Si Google devuelve PCM crudo (16 bits, mono, 24 kHz) se envuelve en un
+//    WAV para poder escucharlo y montarlo.
 //  · La duración se lee de la cabecera, sin decodificar nada.
 // ════════════════════════════════════════════════════════════════
 

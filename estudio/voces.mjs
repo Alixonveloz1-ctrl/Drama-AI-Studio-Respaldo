@@ -7,22 +7,13 @@
 //    quiere, puede cambiarla en Personajes). El Sistema y cada extra con
 //    nombre también tienen su voz fija. La voz pertenece a la identidad
 //    madre: una variante habla con la voz de su personaje.
-//  · Defensa contra la deriva de tono (14.2): una llamada por escena —o por
-//    tramo de hasta dos hablantes cuando en la escena hablan más—, los dos
-//    hablantes en la MISMA llamada, nunca una línea suelta (si hay que
-//    rehacer, se rehace la escena entera) y la misma instrucción de estilo
-//    en todo el proyecto.
+//  · Las voces son Chirp 3 HD (decisión del dueño: las de Gemini salían con
+//    pausas raras). Una llamada por tramo de una misma voz, nunca una línea
+//    suelta; si hay que rehacer, se rehace la escena entera.
 // ════════════════════════════════════════════════════════════════
 import { llamar } from './red.mjs';
 import { pedirMedio, recordarUrl } from './medios.mjs';
 import { sexoDe } from './imagenes.mjs';
-
-export const REGISTROS = [
-  { valor: 'normal', etiqueta: 'Normal (actuado y natural)' },
-  { valor: 'dramatica', etiqueta: 'Dramática (más intensa)' },
-  { valor: 'plana', etiqueta: 'Plana (sin actuar)' },
-];
-export const registroDe = d => (REGISTROS.some(r => r.valor === d?.ajustes?.registroVoz) ? d.ajustes.registroVoz : 'normal');
 
 let cacheVoces = null;
 export async function vocesDisponibles() {
@@ -86,14 +77,15 @@ export function asignarExtras(u, escenas, voces) {
   return cambio;
 }
 
-// Versión de la forma de grabar: las voces hechas con la anterior (dos
-// hablantes por llamada) salían cruzadas y se rehacen.
-export const VERSION_VOZ = 2;
+// Versión de la forma de grabar: las voces de versiones anteriores se
+// rehacen (la 1 salía cruzada con dos hablantes por llamada; la 2 era Gemini
+// TTS, con pausas raras; la 3 es Chirp 3 HD).
+export const VERSION_VOZ = 3;
 export const vozVigente = e => Boolean(e?.voz?.tramos?.length) && !e.voz.obsoleta && e.voz.version === VERSION_VOZ;
 
 // Parte la escena en tramos: líneas seguidas de la MISMA voz (y del mismo
-// tipo: lo pensado va aparte, más suave). Así cada llamada tiene un solo
-// hablante y al modelo solo le llega lo que se dice.
+// tipo: lo pensado va aparte). Así cada llamada tiene un solo hablante y al
+// motor solo le llega lo que se dice.
 export function tramosDeEscena(escena, u) {
   const tramos = [];
   let actual = null;
@@ -117,30 +109,31 @@ export async function vozEscena({ proyectoId, datos, escena, control, aviso, gua
   const voces = await vocesDisponibles();
   if (asignarVoces(u, voces) | asignarExtras(u, [escena], voces)) await guardar();
   const tramos = tramosDeEscena(escena, u);
-  const registro = registroDe(datos);
   const hechos = [];
   for (const [i, t] of tramos.entries()) {
     aviso?.(`voz de la escena · tramo ${i + 1} de ${tramos.length}…`);
     const r = await pedirMedio('/api/voz', {
-      proyecto: proyectoId, clave: `voz-${escena.id}-${i + 1}`, registro, voz: t.voz, pensamiento: t.pensamiento,
+      proyecto: proyectoId, clave: `voz-${escena.id}-${i + 1}`, voz: t.voz,
       lineas: t.lineas.map(l => l.texto),
     }, { control, aviso });
     recordarUrl(r.ruta, r.url);
     hechos.push({ ruta: r.ruta, segundos: r.segundos || 0, lineas: t.lineas.map(l => l.indice) });
   }
-  escena.voz = { tramos: hechos, registro, fecha: Date.now(), version: VERSION_VOZ };
+  escena.voz = { tramos: hechos, fecha: Date.now(), version: VERSION_VOZ };
   await guardar();
   return escena.voz;
 }
 
 // Muestra de una voz, para oírla antes de elegirla (se guarda y se reutiliza).
+// Las muestras viejas (Gemini) quedan en «muestrasVoz» y ya no se usan.
 export const TEXTO_MUESTRA = 'Hola. Así sonaría mi voz en este drama. ¿Te convence, o prefieres otra?';
+export const muestraGuardada = (datos, voz) => datos?.muestrasChirp?.[voz];
 export async function muestraDeVoz({ proyectoId, datos, voz, guardar }) {
-  datos.muestrasVoz ||= {};
-  if (datos.muestrasVoz[voz]) return datos.muestrasVoz[voz];
-  const r = await pedirMedio('/api/voz', { proyecto: proyectoId, clave: `muestra-${voz.toLowerCase()}`, registro: registroDe(datos), voz, lineas: [TEXTO_MUESTRA] });
+  datos.muestrasChirp ||= {};
+  if (datos.muestrasChirp[voz]) return datos.muestrasChirp[voz];
+  const r = await pedirMedio('/api/voz', { proyecto: proyectoId, clave: `muestra-chirp-${voz.toLowerCase()}`, voz, lineas: [TEXTO_MUESTRA] });
   recordarUrl(r.ruta, r.url);
-  datos.muestrasVoz[voz] = r.ruta;
+  datos.muestrasChirp[voz] = r.ruta;
   await guardar();
   return r.ruta;
 }
