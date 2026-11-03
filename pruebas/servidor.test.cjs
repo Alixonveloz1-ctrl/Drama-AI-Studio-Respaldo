@@ -810,14 +810,17 @@ test('hoja de montaje: el guion lo escribe el servidor, es bash válido y ningú
   assert.equal(archivo, 'episodio-01.mp4');
   assert.ok(!script.includes('rm -rf'), 'los textos viajan como archivos, no dentro del guion');
   assert.ok(textos.some(([r, c]) => r.endsWith('/t/s0001.txt') && c.includes('Misión cumplida.')));
-  assert.ok(textos.some(([r, c]) => r.endsWith('/episodio.srt') && c.includes('00:00:00,350 --> 00:00:02,000')));
+  // Sin subtítulos quemados en el video final: no hay SRT en el montaje
+  // ni filtro subtitles en el guion; el SRT va solo en el ZIP, para CapCut.
+  assert.ok(!textos.some(([r]) => r.endsWith('/episodio.srt')), 'el montaje final no lleva episodio.srt');
+  assert.ok(!script.includes('subtitles=episodio.srt'), 'el video sale limpio, sin subtítulos quemados');
+  assert.ok(!script.includes('BackColour'), 'sin fondo negro de subtítulos en el video');
   assert.deepEqual(descargas[0], ['gs://b/' + base + 'plano-e1-1.mp4', 'm/p0001.mp4']);
   assert.match(script, /segmento_video m\/p0001\.mp4 seg\/s0001\.mp4 4\.000 t\/s0001\.txt/);
   assert.match(script, /segmento_imagen m\/p0002\.png seg\/s0002\.mp4 2\.500 1 -/);
   assert.match(script, /setpts=\$\{f\}\*PTS,tpad=stop_mode=clone/, 'se retima, no se repite ni se recorta');
   assert.match(script, /x=d\/r; if \(x>3\) x=3/, 'ralentizar como mucho 3×');
   assert.match(script, /loudnorm=I=-16/);
-  assert.match(script, /subtitles=episodio\.srt/);
   const ruta = path.join(require('node:os').tmpdir(), 'montar-prueba.sh');
   fs.writeFileSync(ruta, script);
   assert.equal(require('node:child_process').spawnSync('bash', ['-n', ruta]).status, 0, 'el guion es un shell válido');
@@ -827,6 +830,19 @@ test('hoja de montaje: el guion lo escribe el servidor, es bash válido y ningú
   }
   const zip = hojaLib.validar('pimagen0001', { modo: 'zip', episodio: 2, archivos: [{ ruta: base + 'plano-e1-2.png', nombre: 'imagenes/escena-01-plano-02.png' }], textos: [{ nombre: 'guion.txt', contenido: 'x' }] });
   assert.equal(hojaLib.construir(zip, { bucket: 'b', carpeta: 'c' }).archivo, 'material-ep02.zip');
+  // ZIP con voces: un solo voces.wav mezclado, no archivos sueltos.
+  const zipVoces = hojaLib.validar('pimagen0001', { modo: 'zip', episodio: 2,
+    archivos: [{ ruta: base + 'plano-e1-2.png', nombre: 'imagenes/toma-001.png' }],
+    textos: [{ nombre: 'subtitulos.srt', contenido: '1\n00:00:00,350 --> 00:00:02,000\nHola\n' }],
+    voces: [{ ruta: base + 'voz-e1-1.wav', inicio: 0.35, segundos: 2 }, { ruta: base + 'voz-e1-2.wav', inicio: 2.6, segundos: 1 }] });
+  const zipVocesHecho = hojaLib.construir(zipVoces, { bucket: 'b', carpeta: 'c' });
+  assert.ok(zipVocesHecho.descargas.some(([, d]) => d === 'a/v0001.wav'), 'los tramos se descargan para mezclarlos');
+  assert.ok(!zipVocesHecho.descargas.some(([, d]) => d.startsWith('material/voces/')), 'ningún tramo suelto entra en el ZIP');
+  assert.match(zipVocesHecho.script, /material\/voces\.wav/, 'se mezcla un solo voces.wav');
+  assert.match(zipVocesHecho.script, /amix=inputs=2/, 'la mezcla usa los dos tramos');
+  const rutaZip = path.join(require('node:os').tmpdir(), 'montar-zip-prueba.sh');
+  fs.writeFileSync(rutaZip, zipVocesHecho.script);
+  assert.equal(require('node:child_process').spawnSync('bash', ['-n', rutaZip]).status, 0, 'el guion del ZIP es un shell válido');
   assert.throws(() => hojaLib.validar('pimagen0001', { modo: 'zip', episodio: 1, archivos: [{ ruta: base + 'a.png', nombre: '../../etc/passwd' }] }));
 });
 

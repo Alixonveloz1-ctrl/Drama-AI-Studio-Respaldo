@@ -116,6 +116,27 @@ async function trabajar(tarea) {
   }
 }
 
+// Lo que falta de lo barato antes de montar o de armar el ZIP: voces de
+// cada escena, música de cada acto y subtítulos alineados con la voz real.
+// Las imágenes no se generan aquí: son lo caro y lo que el dueño revisa.
+async function completarParaMontar({ p, d, numero, ep, o, modo }) {
+  if (ep.trabajos?.[modo]) return;
+  const escenas = escenasDelEpisodio(d, numero);
+  const cuenta = await tanda(escenas, {
+    ...o, palabra: 'hechas',
+    yaHecho: e => vozVigente(e),
+    hacer: (e, op) => vozEscena({ proyectoId: p.id, datos: d, escena: e, control: op.control, aviso: op.aviso, guardar: o.guardar }),
+    alAvanzar: () => pintarExportar(),
+  });
+  if (cuenta.fallidos) throw new Error(`No se pudo hacer la voz de ${cuenta.fallidos} escena(s): ${cuenta.errores.map(x => x.texto).join(' · ')}`);
+  await generarMusica({ proyectoId: p.id, datos: d, numero, ...o, alAvanzar: () => pintarExportar() });
+  for (const [i, e] of escenas.entries()) {
+    o.aviso(`Subtítulos: escena ${i + 1} de ${escenas.length}…`);
+    await alinearEscena({ proyectoId: p.id, escena: e, control: o.control, aviso: o.aviso });
+  }
+  await o.guardar();
+}
+
 async function alPulsar(evento) {
   const boton = evento.target.closest('[data-accion]');
   if (!boton || boton.disabled) return;
@@ -129,26 +150,7 @@ async function alPulsar(evento) {
   const ep = d.episodios[numero];
   if (accion === 'montar') {
     return trabajar(async o => {
-      if (!ep.trabajos?.video) {
-        // 1. Voces que falten, escena a escena.
-        const escenas = escenasDelEpisodio(d, numero);
-        const cuenta = await tanda(escenas, {
-          ...o, palabra: 'hechas',
-          yaHecho: e => vozVigente(e),
-          hacer: (e, op) => vozEscena({ proyectoId: p.id, datos: d, escena: e, control: op.control, aviso: op.aviso, guardar: o.guardar }),
-          alAvanzar: () => pintarExportar(),
-        });
-        if (cuenta.fallidos) throw new Error(`No se pudo hacer la voz de ${cuenta.fallidos} escena(s): ${cuenta.errores.map(x => x.texto).join(' · ')}`);
-        // 2. Música de cada acto.
-        await generarMusica({ proyectoId: p.id, datos: d, numero, ...o, alAvanzar: () => pintarExportar() });
-        // 3. Subtítulos alineados con la voz real.
-        for (const [i, e] of escenas.entries()) {
-          o.aviso(`Subtítulos: escena ${i + 1} de ${escenas.length}…`);
-          await alinearEscena({ proyectoId: p.id, escena: e, control: o.control, aviso: o.aviso });
-        }
-        await o.guardar();
-      }
-      // 4. El montador.
+      await completarParaMontar({ p, d, numero, ep, o, modo: 'video' });
       const r = await montar({ proyectoId: p.id, datos: d, numero, modo: 'video', ...o });
       enlaces[r.ruta] = r.url;
       return 'Episodio montado.';
@@ -156,6 +158,10 @@ async function alPulsar(evento) {
   }
   if (accion === 'zip') {
     return trabajar(async o => {
+      // El paquete va debajo de «Montar el episodio» y primero hace lo
+      // que falte (voces, música, tiempos), igual que al montar, y luego
+      // arma el ZIP numerado con su guía y su subtitulos.srt.
+      await completarParaMontar({ p, d, numero, ep, o, modo: 'zip' });
       const r = await montar({ proyectoId: p.id, datos: d, numero, modo: 'zip', ...o });
       enlaces[r.ruta] = r.url;
       return 'ZIP listo para descargar.';

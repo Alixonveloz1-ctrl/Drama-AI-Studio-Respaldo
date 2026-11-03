@@ -43,7 +43,10 @@ function bloqueValido({ apertura = true, palabras = 430 } = {}) {
   let total = escenas.flatMap(e => e.lineas).reduce((n, l) => n + G.contarPalabras(l.texto), 0);
   let k = 0;
   while (total < palabras) {
-    escenas[1].lineas.push({ tipo: 'dialogo', personaje: k % 2 ? 'c2' : 'c1', texto: relleno });
+    // Relleno con mayoría del protagonista (c1): la nueva regla exige que
+    // al menos la mitad de las palabras sean del protagonista, entre su
+    // diálogo y su pensamiento, no del resto del reparto.
+    escenas[1].lineas.push({ tipo: 'dialogo', personaje: k % 3 === 2 ? 'c2' : 'c1', texto: relleno });
     total += G.contarPalabras(relleno); k++;
   }
   const json = {
@@ -113,6 +116,13 @@ test('plan: 3 minutos = 1 bloque con 2 ciclos; 30 minutos = 6 bloques', () => {
   assert.equal(corto.length, 1);
   assert.equal(corto[0].ciclos, 2);
   assert.equal(corto[0].fase, 'unico');
+  // Piloto de 30 segundos: 1 bloque de ~73 palabras, sin historia completa.
+  const piloto = P.planDelEpisodio({ ...formulario, duracion: 0.5 });
+  assert.equal(piloto.length, 1);
+  assert.equal(piloto[0].palabras, Math.round(0.5 * P.PALABRAS_POR_MINUTO));
+  assert.equal(piloto[0].ciclos, 1);
+  assert.equal(P.etiquetaDuracion({ duracion: 0.5 }), 'prueba piloto de 30 segundos');
+  assert.equal(P.etiquetaDuracion({ duracion: 3 }), 'prueba de 3 minutos');
   const largo = P.planDelEpisodio({ ...formulario, duracion: 30 });
   assert.equal(largo.length, 6);
   assert.equal(largo.reduce((n, b) => n + b.palabras, 0), 30 * P.PALABRAS_POR_MINUTO);
@@ -458,6 +468,31 @@ test('video: el audio prohíbe también gritos y jadeos, y el negativo los lista
   assert.match(n, /see-through clothing/);
 });
 
+test('video: solo las tomas de diálogo llevan boca hablando, sin voz audible; pensamiento y Sistema, boca cerrada', () => {
+  const u = universoValido();
+  const escena = { lineas: [
+    { tipo: 'dialogo', personaje: 'c1', texto: 'Te lo digo claro: no me voy.' },
+    { tipo: 'pensamiento', personaje: 'c1', texto: 'Si me quedo, pierdo todo.' },
+    { tipo: 'sistema', personaje: null, texto: 'Misión cumplida.' },
+  ] };
+  assert.equal(V.tipoDeAncla(escena, { ancla: 'Te lo digo claro' }), 'dialogo');
+  assert.equal(V.tipoDeAncla(escena, { ancla: 'Si me quedo' }), 'pensamiento');
+  assert.equal(V.tipoDeAncla(escena, { ancla: 'Misión cumplida' }), 'sistema');
+  assert.equal(V.tipoDeAncla(escena, { ancla: 'palabras que no están' }), '');
+  const habla = V.promptVideo({ movimiento: 'Lin Feng speaks.' }, u.escenarios[0], { hablar: true });
+  assert.match(habla, /SPEAKING PERFORMANCE/);
+  assert.match(habla, /NO audible speech/);
+  assert.ok(habla.endsWith(V.AUDIO), 'el audio sin voces sigue al final y manda');
+  assert.ok(!V.negativoVideo({ movimiento: '' }, u.escenarios[0], { hablar: true }).includes('talking'), 'en diálogo, «talking» no va en el negativo o la boca quedaría quieta');
+  assert.match(V.negativoVideo({ movimiento: '' }, u.escenarios[0], { hablar: true }), /screaming, shouting/, 'los sonidos vocales siguen prohibidos');
+  const piensa = V.promptVideo({ movimiento: 'Lin Feng thinks.' }, u.escenarios[0], { hablar: false });
+  assert.match(piensa, /NO SPEAKING PERFORMANCE/);
+  assert.ok(!piensa.includes('SPEAKING PERFORMANCE — CRITICAL'));
+  // Sin clasificar: actuación neutra de antes, sin bloque de boca.
+  const neutro = V.promptVideo({ movimiento: 'Lin Feng stands.' }, u.escenarios[0]);
+  assert.ok(!neutro.includes('SPEAKING PERFORMANCE') && !neutro.includes('NO SPEAKING PERFORMANCE'));
+});
+
 test('lugares: el director escribe una ficha detallada en inglés de cada lugar y va completa en cada plano', async () => {
   const datos = { formulario, universo: universoValido(), biblia: { direccionVisual: 'ocre' } };
   const larga = n => Array.from({ length: n }, (_, i) => `the stone item ${i} with old wood`).join(', ');
@@ -560,7 +595,7 @@ test('música: un acto por bloque (la prueba de 3 min se parte en dos); pieza la
   assert.match(p.mensaje, /Premisa:/, 'y la historia entera');
 });
 
-test('montaje: cada escena dura su narración, los planos se reparten por peso, voces y música en su instante, sin duplicar el Sistema', () => {
+test('montaje: cada escena dura su narración, los planos sin ancla se reparten por peso, voces y música en su instante, sin duplicar el Sistema', () => {
   const datos = { formulario, universo: universoValido(), episodios: { 1: { estado: 'completo', musica: { 1: { ruta: 'r/m1.mp3', brief: 'x', version: MU.VERSION_MUSICA } }, bloques: [{ escenas: [
     { id: 'e1', titulo: 'La deuda', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Hola. ¿Me oyes?' }, { tipo: 'sistema', personaje: null, texto: 'Misión cumplida.' }],
       voz: { version: VZ.VERSION_VOZ, tramos: [{ ruta: 'r/v1.wav', segundos: 2, lineas: [0], tiempos: [{ inicio: 0.1, fin: 1.9 }] }, { ruta: 'r/v2.wav', segundos: 1, lineas: [1] }] },
@@ -581,9 +616,36 @@ test('montaje: cada escena dura su narración, los planos se reparten por peso, 
   datos.episodios[1].bloques[0].escenas[0].planos[1].imagenObsoleta = true;
   assert.throws(() => MO.hojaDeVideo(datos, 1), /Falta la imagen del plano 2/);
   const zip = MO.hojaDeZip(datos, 1);
-  assert.ok(zip.archivos.some(a => a.nombre === 'videos/escena-01-plano-01.mp4'));
+  // Numeración global por toma: imagen y video de la misma toma comparten número.
+  assert.ok(zip.archivos.some(a => a.nombre === 'videos/toma-001.mp4'));
+  assert.ok(zip.archivos.some(a => a.nombre === 'imagenes/toma-001.png'));
   assert.ok(zip.archivos.some(a => a.nombre === 'musica/acto-1.mp3'));
   assert.ok(zip.textos.some(t => t.nombre === 'guion.txt' && /ESCENA 1 — La deuda/.test(t.contenido)));
+  assert.ok(zip.textos.some(t => t.nombre === 'guia.txt' && /Toma 001/.test(t.contenido)));
+  assert.ok(zip.textos.some(t => t.nombre === 'subtitulos.srt' && /Hola\./.test(t.contenido)), 'el SRT va siempre en el paquete, para CapCut');
+  assert.ok(!zip.archivos.some(a => a.nombre.startsWith('voces/')), 'las voces sueltas no van en el ZIP');
+  assert.equal(zip.voces.length, 2, 'las voces van como lista para un solo audio mezclado');
+});
+
+test('montaje anclado: el cambio de plano llega cuando empieza la frase siguiente', () => {
+  const u = universoValido();
+  const datos = { formulario, universo: u, episodios: { 1: { estado: 'completo', musica: {}, bloques: [{ escenas: [
+    { id: 'e1', titulo: 'La deuda', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Primera frase corta aquí.' }, { tipo: 'dialogo', personaje: 'c2', texto: 'Segunda frase corta aquí.' }],
+      voz: { version: VZ.VERSION_VOZ, tramos: [{ ruta: 'r/v1.wav', segundos: 4, lineas: [0, 1], tiempos: [{ inicio: 0, fin: 2 }, { inicio: 2, fin: 4 }] }] },
+      planos: [
+        { peso: 1, tipo: 'accion', ancla: 'Primera frase corta', imagen: { ruta: 'r/p1.png' }, video: { ruta: 'r/p1.mp4' } },
+        { peso: 1, tipo: 'cobertura', ancla: 'Segunda frase corta', imagen: { ruta: 'r/p2.png' } },
+      ] },
+  ] }] } } };
+  const h = MO.hojaDeVideo(datos, 1);
+  // Frase 1: de ENTRADA (0.35) a 2.35; frase 2: de 2.35 a 4.35. El primer
+  // plano dura hasta que empieza la segunda frase (2.35 s desde el inicio
+  // de la escena, menos la entrada ya dentro del primer plano: 2.35), y
+  // el segundo cubre hasta el final de la escena (4.35 + cola 0.5 = 4.85,
+  // menos 2.35 = 2.5).
+  assert.ok(Math.abs(h.planos[0].duracion - 2.35) < 0.01, `el primer plano dura hasta la segunda frase, salió ${h.planos[0].duracion}`);
+  assert.ok(Math.abs(h.planos[1].duracion - 2.5) < 0.01, `el segundo plano cubre hasta el final, salió ${h.planos[1].duracion}`);
+  assert.ok(Math.abs(h.planos.reduce((n, p) => n + p.duracion, 0) - (MO.ENTRADA + 4 + MO.COLA)) < 0.01);
 });
 
 test('episodios encadenados: el episodio 2 conoce lo que pasó y sus escenas tienen ids propios (no hereda medios)', async () => {

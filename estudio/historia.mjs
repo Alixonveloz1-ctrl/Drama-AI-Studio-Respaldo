@@ -94,7 +94,7 @@ function htmlFormulario(d) {
     const pub = PUBLICOS.find(x => x.valor === f.publico)?.etiqueta.split(' — ')[0];
     const subs = f.subgeneros.map(s => SUBGENEROS.find(x => x.valor === s)?.etiqueta.replace(/^[^\p{L}]+/u, '')).filter(Boolean);
     return `<div class="seccion"><h3>${escapar(nombreDe(d))}</h3></div>
-      <p class="nota resumen-eleccion">${escapar(pub)} · ${escapar(g)}${subs.length ? ' · ' + escapar(subs.join(', ')) : ''} · ${f.formato} · ${f.duracion === 3 ? 'prueba de 3 min' : '30 min'} · cierre ${f.cierre === 'suspenso' ? 'en suspenso' : 'completo'}</p>`;
+      <p class="nota resumen-eleccion">${escapar(pub)} · ${escapar(g)}${subs.length ? ' · ' + escapar(subs.join(', ')) : ''} · ${f.formato} · ${f.duracion === 0.5 ? 'piloto de 30 s' : f.duracion === 3 ? 'prueba de 3 min' : '30 min'} · cierre ${f.cierre === 'suspenso' ? 'en suspenso' : 'completo'}</p>`;
   }
   const opcion = (lista, actual) => lista.map(x => `<option value="${x.valor}"${String(x.valor) === String(actual) ? ' selected' : ''}>${escapar(x.etiqueta)}</option>`).join('');
   const chip = s => `<label class="chip${f.subgeneros.includes(s.valor) ? ' activo' : ''}"><input type="checkbox" value="${s.valor}"${f.subgeneros.includes(s.valor) ? ' checked' : ''}><span>${escapar(s.etiqueta)}</span></label>`;
@@ -110,6 +110,7 @@ function htmlFormulario(d) {
     </div>
     <label class="campo">Formato de pantalla<select name="formato">${opcion(FORMATOS, f.formato)}</select></label>
     <label class="campo">Duración<select name="duracion">
+      <option value="0.5"${f.duracion === 0.5 ? ' selected' : ''}>Piloto de 30 segundos (prueba rápida)</option>
       <option value="3"${f.duracion === 3 ? ' selected' : ''}>Prueba de 3 minutos</option>
       <option value="30"${f.duracion === 30 ? ' selected' : ''}>Episodio de 30 minutos</option></select></label>
     <label class="campo">Cierre<select name="cierre">

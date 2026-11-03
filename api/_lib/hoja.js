@@ -21,7 +21,9 @@
 //  · loudnorm iguala las voces; cortes secos; la música va por debajo.
 //  · Capa del Sistema (16.2): sus paneles se dibujan en los planos que
 //    marcó el guion.
-//  · Subtítulos quemados, centrados en el tercio inferior, con fondo.
+//  · SIN subtítulos quemados en el video final (decisión del dueño: los
+//    pone en CapCut). Los subtítulos con tiempos siguen viajando como
+//    archivo en el ZIP (subtitulos.srt), nunca quemados en el montaje.
 // ════════════════════════════════════════════════════════════════
 const { ErrorEstudio } = require('./errores');
 const medios = require('./medios');
@@ -82,8 +84,16 @@ function validar(id, h) {
       if (!/^[a-z0-9][a-z0-9_.-]{1,60}\.(txt|srt|json)$/.test(nombre)) throw new ErrorEstudio('Un nombre de texto del ZIP no es válido.', { estado: 400, tipo: 'peticion' });
       return { nombre, contenido: texto(t?.contenido, 400000) };
     });
+    // Voces para el audio único del paquete: en orden, con su inicio y su
+    // duración. No van como archivos sueltos en el ZIP; el montador las
+    // mezcla en un solo voces.wav (ver construir, modo zip).
+    const voces = lista(h.voces, 4000, 'las voces').map((v, i) => ({
+      ruta: medios.exigirDelProyecto(id, v?.ruta),
+      inicio: num(v?.inicio, 0, 4 * 3600, `el inicio de la voz ${i + 1}`),
+      segundos: num(v?.segundos, 0, 3600, `la duración de la voz ${i + 1}`),
+    }));
     if (!archivos.length && !textos.length) throw new ErrorEstudio('No hay nada que meter en el ZIP.', { estado: 400, tipo: 'peticion' });
-    return { modo, episodio, archivos, textos };
+    return { modo, episodio, archivos, textos, voces };
   }
   const planos = lista(h.planos, 3000, 'los planos').map((p, i) => ({
     tipo: p?.tipo === 'video' ? 'video' : 'imagen',
@@ -113,10 +123,19 @@ function construir(h, { bucket, carpeta }) {
       textos.push([`${carpeta}/textos/${t.nombre}`, t.contenido]);
       descargas.push([gs(`${carpeta}/textos/${t.nombre}`), 'material/textos/' + t.nombre]);
     }
+    // Audio único de voces: cada tramo normalizado y colocado en su
+    // instante, mezclado en material/voces.wav. Los tramos sueltos NO
+    // entran en el ZIP; solo entra este audio único, en orden.
+    const voces = h.voces || [];
+    const totalVoces = voces.reduce((n, v) => Math.max(n, v.inicio + v.segundos), 0);
+    for (const [i, v] of voces.entries()) descargas.push([gs(v.ruta), `a/v${pad(i + 1, 4)}.wav`]);
+    const vocesFiltro = voces.map((v, i) => `[${i}:a]loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,aformat=channel_layouts=stereo,adelay=${Math.round(v.inicio * 1000)}:all=1[v${i}]`).join(';');
+    const vocesEntradas = voces.map((_, i) => `-i a/v${pad(i + 1, 4)}.wav`).join(' ');
     const archivo = `material-ep${pad(h.episodio, 2)}.zip`;
     const script = `#!/usr/bin/env bash
 set -Eeuo pipefail
-cd material
+${voces.length ? `ffmpeg -nostdin -y ${vocesEntradas} -filter_complex "${vocesFiltro};${voces.map((_, i) => `[v${i}]`).join('')}amix=inputs=${voces.length}:normalize=0:dropout_transition=0,apad,atrim=0:${f3(totalVoces)}[o]" -map "[o]" -ar 48000 -ac 2 material/voces.wav
+` : ''}cd material
 zip -r -0 -q "../${archivo}" .
 `;
     return { script, descargas, textos, archivo };
@@ -142,8 +161,9 @@ zip -r -0 -q "../${archivo}" .
   });
   h.voces.forEach((v, i) => descargas.push([gs(v.ruta), `a/v${pad(i + 1, 4)}.wav`]));
   h.musica.forEach((m, i) => descargas.push([gs(m.ruta), `a/m${pad(i + 1)}.${extMusica(m.ruta)}`]));
-  textos.push([`${carpeta}/episodio.srt`, srt(h.subtitulos)]);
-  descargas.push([gs(`${carpeta}/episodio.srt`), 'episodio.srt']);
+  // Sin episodio.srt en el montaje final: no hay nada que quemar. Los
+  // subtítulos con tiempos van solo en el ZIP (los genera el navegador
+  // a partir de esta misma hoja de voces y tiempos).
 
   const T = f3(h.total);
   // Voces: cada tramo normalizado (loudnorm) y colocado en su instante.
@@ -152,9 +172,6 @@ zip -r -0 -q "../${archivo}" .
   // Música: cada pista en bucle durante su acto, con fundidos.
   const musicaFiltro = h.musica.map((m, i) => `[${i}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${f3(m.duracion)},afade=t=in:d=1.2,afade=t=out:st=${f3(Math.max(0, m.duracion - 1.5))}:d=1.5,adelay=${Math.round(m.inicio * 1000)}:all=1[m${i}]`).join(';');
   const musicaEntradas = h.musica.map((m, i) => `-stream_loop -1 -i a/m${pad(i + 1)}.${extMusica(m.ruta)}`).join(' ');
-  const tamSub = h.formato === '16:9' ? 15 : 11;
-  const margenSub = h.formato === '16:9' ? 22 : 56;
-
   const script = `#!/usr/bin/env bash
 # Guion generado por el servidor de Drama AI Studio a partir de la hoja de montaje.
 set -Eeuo pipefail
@@ -216,10 +233,11 @@ ${h.voces.length ? `ffmpeg -nostdin -y ${vocesEntradas} -filter_complex "${voces
 ${h.musica.length ? `ffmpeg -nostdin -y ${musicaEntradas} -filter_complex "${musicaFiltro};${h.musica.map((_, i) => `[m${i}]`).join('')}amix=inputs=${h.musica.length}:normalize=0:dropout_transition=0,apad,atrim=0:${T}[o]" -map "[o]" -ar 48000 -ac 2 musica.wav` : `ffmpeg -nostdin -y -f lavfi -i anullsrc=r=48000:cl=stereo -t ${T} musica.wav`}
 
 # 5. Mezcla final (efectos de los clips + voces + música que baja cuando
-#    hablan) y subtítulos quemados en el tercio inferior.
+#    hablan), SIN subtítulos quemados: el video sale limpio y los
+#    subtítulos se ponen en CapCut con el subtitulos.srt del ZIP.
 ffmpeg -nostdin -y -i planos.mp4 -i voces.wav -i musica.wav -filter_complex \\
-  "[0:v]subtitles=episodio.srt:force_style='FontName=DejaVu Sans,Bold=1,FontSize=${tamSub},PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BackColour=&H99000000,BorderStyle=3,Outline=1,Shadow=0,Alignment=2,MarginV=${margenSub}'[vv];[1:a]asplit=2[vz][vs];[2:a]volume=0.35[m0];[m0][vs]sidechaincompress=threshold=0.03:ratio=6:attack=15:release=350[m];[0:a]volume=0.6[sfx];[sfx][vz][m]amix=inputs=3:normalize=0:duration=first[a]" \\
-  -map "[vv]" -map "[a]" -t ${T} -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart "episodio-${pad(h.episodio, 2)}.mp4"
+  "[1:a]asplit=2[vz][vs];[2:a]volume=0.35[m0];[m0][vs]sidechaincompress=threshold=0.03:ratio=6:attack=15:release=350[m];[0:a]volume=0.6[sfx];[sfx][vz][m]amix=inputs=3:normalize=0:duration=first[a]" \\
+  -map 0:v -map "[a]" -t ${T} -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -c:a aac -b:a 192k -movflags +faststart "episodio-${pad(h.episodio, 2)}.mp4"
 `;
   return { script, descargas, textos, archivo: `episodio-${pad(h.episodio, 2)}.mp4` };
 }

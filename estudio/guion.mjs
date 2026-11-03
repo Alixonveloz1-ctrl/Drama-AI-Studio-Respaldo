@@ -7,7 +7,9 @@
 //     LITERALES del propio texto y en orden (problema → reacción → recompensa);
 //   · un bloque demasiado corto no es un éxito: se vuelve a pedir;
 //   · sin escenas vacías, sin narrador, Sistema solo si la historia lo tiene,
-//     pensamiento solo del protagonista;
+//     pensamiento solo del protagonista, y narración del protagonista:
+//     al menos la mitad de las palabras son del protagonista (diálogo +
+//     pensamiento), no del resto del reparto ni del Sistema;
 //   · se rechaza la prosa literaria, el texto que suena a IA, el resumen
 //     escolar y el diálogo contado en estilo indirecto;
 //   · en la apertura: conflicto antes de los 15 s y elemento especial antes
@@ -199,8 +201,15 @@ export function validarBloque(json, ctx) {
   const palabras = contarPalabras(texto);
   if (palabras < minimoPalabras) problemas.push(`demasiado corto: ${palabras} palabras habladas y el mínimo es ${minimoPalabras}`);
   const porTipo = tipo => todas.filter(l => l.tipo === tipo).reduce((n, l) => n + contarPalabras(l.texto), 0);
-  if (palabras && porTipo('dialogo') / palabras < 0.6) problemas.push('poco diálogo: la gran mayoría tiene que ser diálogo entre personajes');
-  if (palabras && porTipo('pensamiento') / palabras > 0.3) problemas.push('demasiado pensamiento interno: debe ser una parte pequeña');
+  // Narración del protagonista (decisión del dueño): diálogo + pensamiento
+  // del protagonista, sin contar el Sistema, tienen que ser al menos la
+  // mitad de las palabras. El pensamiento interno ya NO tiene tope del 30 %:
+  // es la voz que manda, y el diálogo entre los demás personajes solo
+  // existe cuando el protagonista interactúa con ellos.
+  const palabrasProta = todas.filter(l => l.personaje === protagonista && l.tipo !== 'sistema').reduce((n, l) => n + contarPalabras(l.texto), 0);
+  const palabrasSinSistema = todas.filter(l => l.tipo !== 'sistema').reduce((n, l) => n + contarPalabras(l.texto), 0);
+  if (palabrasSinSistema && palabrasProta / palabrasSinSistema < 0.5) problemas.push('poca narración del protagonista: al menos la mitad de las palabras (sin contar el Sistema) tienen que ser del protagonista, entre su diálogo y su pensamiento en primera persona');
+  void porTipo;
 
   // Ciclos demostrados con citas literales, en orden.
   const norma = normalizar(texto);

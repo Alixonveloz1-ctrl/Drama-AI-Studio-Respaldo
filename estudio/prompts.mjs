@@ -110,7 +110,7 @@ export const ANATOMIA_FORMATO = `ANATOMÍA DEL FORMATO (drama corto que se mira 
    d) Gana algo visible: dinero, respeto, un aliado, puntos, una tecnología.
    Cadencia: un ciclo cada 45 a 90 segundos.
 3. El pensamiento interno del protagonista va ANTES de ejecutar la jugada, no después: el espectador sabe lo que va a pasar y se queda a ver la cara de los demás.
-4. VOCES: el diálogo entre personajes es la gran mayoría (esto se actúa, no se narra). El pensamiento interno del protagonista es una parte pequeña. NO EXISTE narrador que cuente la historia; la única voz en off permitida es la del Sistema, y solo si la historia tiene Sistema.`;
+4. VOCES: el protagonista narra casi todo en primera persona (esto se actúa, no se resume): lo que ve, lo que necesita, lo que planea y lo que piensa, siempre pegado a la acción que se ve en ese momento. Los demás personajes hablan solo cuando él interactúa con ellos, cada uno con su propia voz. NO EXISTE narrador que cuente la historia; la única voz en off permitida es la del Sistema, y solo si la historia tiene Sistema, con su función propia y separada del pensamiento del protagonista.`;
 
 export const REGLAS_ESCRITURA = `REGLAS DE ESCRITURA (cada una corrige un fallo real):
 - Prohibido el resumen escolar: nada de «durante los días siguientes entrenó y mejoró mucho». Si un crecimiento importa, se muestran dos o tres hechos concretos que lo prueben.
@@ -133,6 +133,13 @@ export function subgenerosEfectivos(formulario) {
   return formulario?.publico === 'familia' ? lista.filter(s => !SUBGENEROS_ADULTOS.includes(s)) : lista;
 }
 
+// Etiqueta de duración, incluida la prueba piloto de 30 segundos.
+export function etiquetaDuracion(formulario) {
+  if (formulario?.duracion === 0.5) return 'prueba piloto de 30 segundos';
+  if (formulario?.duracion === 3) return 'prueba de 3 minutos';
+  return 'unos 30 minutos';
+}
+
 // Bloque común con la elección del dueño.
 export function contextoEleccion(formulario) {
   const subs = subgenerosEfectivos(formulario);
@@ -142,7 +149,7 @@ export function contextoEleccion(formulario) {
 - Género principal: ${etiqueta(GENEROS, formulario.genero)}
 - Subgéneros: ${subs.length ? subs.map(s => etiqueta(SUBGENEROS, s)).join(', ') : 'ninguno'}
 - Formato de pantalla: ${formulario.formato === '16:9' ? '16:9 horizontal (YouTube)' : '9:16 vertical (TikTok, Reels, microdrama)'}
-- Duración del episodio: ${formulario.duracion === 3 ? 'prueba de 3 minutos' : 'unos 30 minutos'}
+- Duración del episodio: ${etiquetaDuracion(formulario)}
 - Cierre: ${formulario.cierre === 'suspenso' ? 'en suspenso (gancho explícito para el siguiente episodio)' : 'completo (la historia termina)'}
 
 ${GUIAS_PUBLICO[formulario.publico] || ''}
@@ -334,7 +341,7 @@ ${contextoUniverso(datos)}
 ${contextoAnteriores(datos, numero)}
 ${bibliaParaGuion(datos.biblia)}
 
-Vas a dirigir el EPISODIO ${numero} (${f.duracion === 3 ? 'prueba de 3 minutos' : 'unos 30 minutos'}). Cierre: ${f.cierre === 'suspenso' ? 'EN SUSPENSO: resuelve algo importante y deja un gancho explícito para el siguiente.' : 'COMPLETO: el conflicto central se cierra.'}
+Vas a dirigir el EPISODIO ${numero} (${etiquetaDuracion(f)}). Cierre: ${f.cierre === 'suspenso' ? 'EN SUSPENSO: resuelve algo importante y deja un gancho explícito para el siguiente.' : 'COMPLETO: el conflicto central se cierra.'}
 Devuelve JSON:
 {
   "objetivo": "qué transformación concreta completa este episodio (1-2 frases)",
@@ -351,9 +358,13 @@ Devuelve JSON:
 // Un episodio de 30 minutos no cabe en una llamada de 60 s: se escribe por
 // bloques y se guarda cada bloque terminado.
 export function planDelEpisodio(formulario) {
-  const minutos = formulario.duracion === 3 ? 3 : 30;
+  // duracion es 0.5 para la prueba piloto de 30 segundos, 3 para la prueba
+  // de 3 minutos y 30 para el episodio largo. El piloto no necesita una
+  // historia completa: con ~73 palabras (unos 30 s) basta para comprobar
+  // continuidad, audios, diálogos y efectos.
+  const minutos = formulario.duracion === 0.5 ? 0.5 : formulario.duracion === 3 ? 3 : 30;
   const total = Math.round(minutos * PALABRAS_POR_MINUTO);
-  const bloques = minutos === 3 ? 1 : 6;
+  const bloques = minutos === 30 ? 6 : 1;
   const porBloque = Math.round(total / bloques);
   return Array.from({ length: bloques }, (_, i) => ({ fase: faseDe(i, bloques), palabras: porBloque, ciclos: ciclosPara(porBloque) }));
 }
@@ -420,7 +431,7 @@ export function promptBloque(datos, numero, indice, plan, extra = '') {
   const esApertura = indice === 0;
   const tipos = u.tieneSistema ? '"dialogo" | "pensamiento" | "sistema"' : '"dialogo" | "pensamiento"';
   return {
-    sistema: `Eres guionista de dramas cortos asiáticos para teléfono. Escribes escenas actuadas: diálogo directo entre personajes, pensamiento interno breve del protagonista y nada de narrador. ${CONTRATO_FIDELIDAD} ${REGLA_ADULTOS} Respondes SOLO JSON válido.`,
+    sistema: `Eres guionista de dramas cortos asiáticos para teléfono. Escribes escenas actuadas: el protagonista narra casi todo en primera persona (lo que ve, necesita, planea y piensa, pegado a la acción visible); los demás hablan solo cuando él interactúa con ellos; y nada de narrador. ${CONTRATO_FIDELIDAD} ${REGLA_ADULTOS} Respondes SOLO JSON válido.`,
     mensaje: `${contextoEleccion(f)}
 
 ${contextoUniverso(datos)}
@@ -434,10 +445,11 @@ ${REGLAS_ESCRITURA}
 ${esEcchi(f) ? '\n' + REGLAS_ECCHI_GUION + '\n' : ''}${canon ? `\n═══ GUION YA ESCRITO (canon inmediato: continúa desde aquí, no lo repitas ni lo resumas) ═══\n${canon}\n═══ FIN DEL GUION YA ESCRITO ═══\n` : ''}
 ESCRIBE AHORA: ${textoFase(pieza.fase, f.cierre)}
 ${pieza.parte ? `Este es un TROZO (${pieza.parte}) de esa fase: escribe solo esa parte y deja la historia lista para seguir.` : ''}
-- Unas ${pieza.palabras} palabras habladas en total (diálogo, pensamiento${u.tieneSistema ? ' y Sistema' : ''}). MÍNIMO ${Math.ceil(pieza.palabras * 0.9)}: un bloque más corto se rechaza. Para llegar, escribe entre ${Math.max(2, Math.ceil(pieza.palabras / 110))} y ${Math.max(3, Math.ceil(pieza.palabras / 60))} escenas completas y cuenta las palabras antes de responder.${esApertura && u.tieneSistema ? '\n- El Sistema aparece YA en la primera escena: su primera línea ("tipo":"sistema") llega antes de las primeras 70 palabras.' : ''}
+- Unas ${pieza.palabras} palabras habladas en total (diálogo, pensamiento${u.tieneSistema ? ' y Sistema' : ''}). MÍNIMO ${Math.ceil(pieza.palabras * 0.9)}: un bloque más corto se rechaza. Para llegar, escribe entre ${pieza.palabras <= 90 ? 1 : Math.max(2, Math.ceil(pieza.palabras / 110))} y ${pieza.palabras <= 90 ? 2 : Math.max(3, Math.ceil(pieza.palabras / 60))} escenas completas y cuenta las palabras antes de responder.${esApertura && u.tieneSistema ? '\n- El Sistema aparece YA en la primera escena: su primera línea ("tipo":"sistema") llega antes de las primeras 70 palabras.' : ''}
 - Al menos ${pieza.ciclos} ciclo(s) de retención COMPLETOS (problema → solución → reacción de los demás → recompensa visible).
-- Escenas de 40 a 150 palabras cada una. Ninguna escena vacía ni de relleno.
-- El pensamiento («pensamiento») es SOLO del protagonista (${protagonista.id} = ${protagonista.nombre}) y va antes de su jugada.${u.tieneSistema ? '\n- Las líneas del Sistema llevan "tipo":"sistema" y "personaje":null. Son paneles o notificaciones breves.' : ''}
+- Escenas de ${pieza.palabras <= 90 ? '25 a 80' : '40 a 150'} palabras cada una. Ninguna escena vacía ni de relleno.
+- NARRACIÓN DEL PROTAGONISTA (obligatoria): al menos la mitad de las palabras habladas son del protagonista (${protagonista.id} = ${protagonista.nombre}), entre su diálogo y su pensamiento en primera persona, siempre pegadas a la acción que se ve. Los demás personajes hablan solo cuando él interactúa con ellos.
+- El pensamiento («pensamiento») es SOLO del protagonista (${protagonista.id} = ${protagonista.nombre}) y va antes de su jugada.${u.tieneSistema ? '\n- Las líneas del Sistema llevan "tipo":"sistema" y "personaje":null. Son paneles o notificaciones breves, con función propia y separada del pensamiento del protagonista.' : ''}
 - "accion" describe lo que SE VE al empezar la escena (personas, gesto, lugar) en 1 o 2 frases concretas; no se lee en voz alta.
 - Los personajes del reparto se nombran con su id. Un extra sin ficha (un soldado, un mercader) lleva "personaje":"extra" y su "nombre".
 ${indice > 0 ? '- Empieza justo después de la última acción del guion ya escrito. No reinicies la premisa.' : ''}

@@ -12,6 +12,12 @@
 //    «no muevas la cámara». De ahí venía la deriva a primer plano.
 //  · Audio nativo sin voces: Veo sincroniza los efectos con lo que él mismo
 //    anima. Si alguna vez cuela una voz, se regenera ese plano y ya.
+//  · Boca hablando sin voz (solo en tomas de diálogo): el personaje mueve
+//    la boca como si hablara, pero el AUDIO sigue siendo solo ambiente y
+//    efectos, sin diálogo ni ningún sonido vocal humano. Nunca se le pide
+//    diálogo audible a Veo: su audio viene mezclado en un solo canal y no
+//    se podría quitar la voz dejando los efectos limpios. En tomas de
+//    pensamiento o de Sistema, la boca NO se mueve hablando.
 //  · Sin encadenado de fotogramas: ni el último fotograma del plano
 //    siguiente ni fotogramas sacados del MP4 (nota final de la especificación).
 // ════════════════════════════════════════════════════════════════
@@ -34,6 +40,29 @@ const CONSULTAS = 72;         // 12 minutos como mucho
 
 // ─── Bloques literales (sección 13.2) ───
 export const ACTUACION = 'PERFORMANCE — CRITICAL: the characters are acting inside the scene and stay in the story — never posing, never turning toward the lens, never making eye contact with the camera, never addressing the viewer. The angle on them is ALREADY set by the first frame; keep that relationship to them for the whole clip.';
+// Solo para tomas de diálogo: boca hablando, sin voz audible (el audio
+// lo fija el bloque AUDIO, que va al final y manda). En pensamiento o
+// Sistema, este bloque NO se añade: la boca se queda cerrada.
+export const HABLA_SIN_VOZ = 'SPEAKING PERFORMANCE — CRITICAL: the visible character IS speaking in this shot: their mouth moves naturally as if speaking, jaw and lips articulating words, with small head and hand gestures of speech. The mouth must be visibly moving throughout the spoken part, never closed or still. This is a SILENT speaking performance for the picture only: the soundtrack must still carry NO audible speech at all (see AUDIO).';
+export const SIN_HABLA = 'NO SPEAKING PERFORMANCE: no character speaks aloud in this shot: mouths stay closed, the character reacts, listens or thinks, with no lip movement of speech.';
+
+// Clasifica el ancla de un plano según la línea de la escena que contiene
+// ese fragmento literal. Devuelve 'dialogo', 'pensamiento', 'sistema' o
+// '' si el ancla no se sitúa en ninguna línea (por ejemplo, si viene de
+// lo que se ve al empezar la escena). No rompe planos antiguos sin ancla.
+const normAncla = t => String(t || '').toLowerCase()
+  .normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .replace(/[«»"“”'‘’¿?¡!.,;:…—–\-()[\]]/g, ' ')
+  .replace(/\s+/g, ' ').trim();
+export function tipoDeAncla(escena, plano) {
+  const ancla = normAncla(plano?.ancla);
+  if (!ancla) return '';
+  for (const l of escena?.lineas || []) {
+    if (normAncla(l.texto).includes(ancla)) return l.tipo || '';
+  }
+  return '';
+}
+export const hablaEnPlano = (escena, plano) => tipoDeAncla(escena, plano) === 'dialogo';
 export const ENCUADRE_BLOQUEADO = 'FRAMING — LOCKED: the first frame sets the camera position, the lens and the shot size for the ENTIRE clip. Hold that exact framing from first frame to last: same distance to the subject, same lens, same shot size, same headroom, same amount of the room visible. The camera sits on a locked tripod unless the SHOT MOTION line names a camera move — if it names none, there is no zoom, no push-in, no pull-back and no reframing at any point.';
 export const ESTILO = 'STYLE — ABSOLUTELY MANDATORY: preserve the exact rendering of the first frame, pixel for pixel in look. Do not restyle it, do not turn it into animation, illustration or a videogame cinematic while moving.';
 // El texto literal de la especificación y, detrás, una frase añadida: Veo
@@ -56,7 +85,7 @@ function primeraFrase(texto) {
   return (corte > 0 ? t.slice(0, corte) : t).replace(/\.$/, '');
 }
 
-export function promptVideo(plano, escenario) {
+export function promptVideo(plano, escenario, opciones = {}) {
   const movimiento = String(plano.movimiento || '').trim();
   const camara = CAMARA_ESCRITA.test(movimiento);
   const motivo = movimiento
@@ -64,6 +93,10 @@ export function promptVideo(plano, escenario) {
     : 'MOTION — CRITICAL: subtle cinematic movement only. Gentle breathing, small natural gestures (head tilt, eye blink, hand movement). Characters stay in position — NO jumping, NO teleporting, NO sudden changes. Smooth and natural, like a live-action drama series.';
   const lugar = escenario ? `SETTING — already built into the input image, do not redesign it: ${primeraFrase(escenario.description || escenario.descripcion || escenario.nombre)}.` : '';
   const clima = CLIMA + (escenario?.interior ? CLIMA_INTERIOR : '');
+  // habla: true solo en tomas de diálogo (lo decide videoPlano a partir
+  // de la línea que contiene el ancla). Si no se sabe, no se añade nada
+  // y queda la actuación neutra de antes.
+  const habla = opciones.hablar === true ? HABLA_SIN_VOZ : opciones.hablar === false ? SIN_HABLA : '';
   return [
     ESTILO,
     motivo,
@@ -71,6 +104,7 @@ export function promptVideo(plano, escenario) {
     lugar,
     clima,
     ACTUACION,
+    habla,
     `SHOT MOTION: ${movimiento ? movimiento.replace(/\.$/, '') : 'the characters hold their positions with small natural movement'}.`,
     AUDIO,
   ].filter(Boolean).join(' ');
@@ -78,13 +112,19 @@ export function promptVideo(plano, escenario) {
 
 // Google: el prompt negativo es una LISTA DE COSAS, nunca una orden.
 // «no rain indoors» no hace nada; «indoor rain» funciona.
-export function negativoVideo(plano, escenario) {
+export function negativoVideo(plano, escenario, opciones = {}) {
   const partes = [
     'blurry, distorted face, deformed face, warped anatomy, extra limbs, extra fingers, morphing hands, flickering, warping background, melting geometry, duplicated character',
     'text, letters, subtitles, captions, watermark, logo, timestamp, letterboxing, black bars, split screen',
     'character facing the camera, eye contact with the camera, posing for the camera',
     'anime, cartoon, illustration, cel shading, videogame cutscene',
-    'talking, speech, dialogue, voice-over, narration, singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds',
+    // En tomas de diálogo, la boca DEBE moverse hablando, así que «talking,
+    // speech, dialogue» no van en el negativo: si fueran, Veo dejaría la
+    // boca quieta. El bloque AUDIO sigue prohibiendo la voz audible, y
+    // los sonidos vocales (gritos, risas…) siguen prohibidos siempre.
+    opciones.hablar === true
+      ? 'singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds'
+      : 'talking, speech, dialogue, voice-over, narration, singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds',
     'see-through clothing, transparent wet shirt, sheer fabric showing skin underneath',
     'indoor rain, rain inside a room, rain inside a corridor, precipitation indoors, water falling indoors, wet indoor floor, puddles indoors, indoor snow',
   ];
@@ -109,9 +149,14 @@ export async function videoPlano({ proyectoId, datos, escena, plano, control, av
   const escenario = datos.universo.escenarios.find(x => x.id === escena.escenario);
   if (!plano.operacion?.nombre) {
     aviso?.('Enviando a Veo…');
+    // Solo las tomas de diálogo llevan boca hablando; las de pensamiento
+    // o Sistema llevan boca cerrada. Si el ancla no se sitúa en ninguna
+    // línea, no se fuerza ninguna de las dos (actuación neutra de antes).
+    const tipo = tipoDeAncla(escena, plano);
+    const hablar = tipo === 'dialogo' ? true : tipo === 'pensamiento' || tipo === 'sistema' ? false : undefined;
     const r = await pedirMedio('/api/video-inicio', {
       proyecto: proyectoId, clave: 'video-' + plano.id, imagen: plano.imagen.ruta,
-      prompt: promptVideo(plano, escenario), negativo: negativoVideo(plano, escenario),
+      prompt: promptVideo(plano, escenario, { hablar }), negativo: negativoVideo(plano, escenario, { hablar }),
       formato: datos.formulario.formato, modelo: modeloVideo(datos),
     }, { control, aviso });
     plano.operacion = { nombre: r.operacion, modelo: r.modelo, inicio: Date.now(), imagen: plano.imagen.ruta };
