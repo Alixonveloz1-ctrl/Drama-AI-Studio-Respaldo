@@ -44,7 +44,11 @@ ROLES = [
     'roles/aiplatform.user',
     'roles/storage.admin',
     'roles/serviceusage.serviceUsageConsumer',
-    # Lanzar el montador y consultar cómo va.
+    # Lanzar el montador y consultar cómo va. El montador se lanza con su
+    # trabajo propio (overrides: carpeta y salida); run.invoker no basta para
+    # eso (fallo visto: «run.jobs.runWithOverrides denied»). El rol es el
+    # mismo que usa la parte de cortos del estudio de anime.
+    'roles/run.jobsExecutorWithOverrides',
     'roles/run.invoker',
     'roles/run.viewer',
 ]

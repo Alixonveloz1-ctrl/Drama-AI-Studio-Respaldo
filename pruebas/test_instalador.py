@@ -310,6 +310,7 @@ class RecorridoCompleto(BaseInstalador):
         self.assertEqual(self.mundo.construcciones, 1)
         roles = [c for c in self.mundo.llamadas if c[:3] == ['gcloud', 'projects', 'add-iam-policy-binding']]
         self.assertTrue(any('--role=roles/run.invoker' in c for c in roles))
+        self.assertTrue(any('--role=roles/run.jobsExecutorWithOverrides' in c for c in roles), 'el montador se lanza con overrides')
 
         # Segunda vez: nada que preguntar, ninguna clave nueva, nada que publicar.
         llamadas_antes = len(self.mundo.cuerpos_vercel)

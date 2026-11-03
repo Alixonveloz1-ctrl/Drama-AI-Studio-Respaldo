@@ -54,7 +54,7 @@ function errorDeGoogle(servicio, estadoHttp, cuerpo) {
   const explicacion = {
     400: `Google rechazó la petición de ${servicio} porque algo en ella no es válido.`,
     401: `Google no aceptó las credenciales para ${servicio}. Vuelve a ejecutar el instalador.`,
-    403: `Google negó el permiso para ${servicio}: la API puede estar apagada o a la cuenta de servicio le falta un rol.`,
+    403: `Google negó el permiso para ${servicio}: la API puede estar apagada o a la cuenta de servicio le falta un rol. Abre Cloud Shell y ejecuta el instalador: él activa las APIs y pone los roles.`,
     404: `Google no encuentra el modelo o el recurso de ${servicio} en esa región, o tu proyecto no tiene acceso a él.`,
     500: `Google tuvo un fallo interno con ${servicio}.`,
     503: `El servicio de Google para ${servicio} no está disponible ahora mismo.`,
