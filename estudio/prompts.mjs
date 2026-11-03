@@ -255,7 +255,7 @@ Escribe la BIBLIA DE LA SERIE. Se inyectará en todos los pasos posteriores.
 Devuelve JSON:
 {
   "direccionVisual": "paleta concreta (3-4 colores) y luz con fuentes motivadas para ESTA serie, en 3-4 frases filmables",
-  "identidadMusical": "familia instrumental, textura y tempo de la banda sonora; oscila entre tensión, aventura y fanfarria de triunfo, sin tapar el diálogo",
+  "identidadMusical": "sonido de banda sonora ACTUAL de drama asiático de éxito para ESTA historia: familia instrumental concreta, textura y tempo; oscila entre tensión, emoción y triunfo épico, sin tapar el diálogo",
   "ritmoNarrativo": "cómo respira el episodio: dónde acelera, dónde deja reaccionar, cada cuánto llega el ciclo",
   "ritmoMontaje": "cadencia de cortes: planos de acción de 4 s y de cobertura de 1,5 a 3 s; cuándo esta serie usa el extremo rápido",
   "motivosRecurrentes": ["objeto, gesto o encuadre que reaparece con sentido", "…", "…"],
@@ -459,19 +459,85 @@ Las citas se copian EXACTAMENTE de los textos de "lineas", en el mismo orden en 
 
 // ─── 6. Música por actos (sección 14.4) ───
 // Lyria solo acepta inglés: el director escribe cada brief en inglés.
+// ─── Dirección musical (Lyria 3 Pro, una pieza larga por acto) ───
+// Fallo visto: con solo título, premisa y un resumen por acto, la música salió
+// como «techno de los años 30», vieja y sin relación con la historia. Ahora el
+// director recibe la historia entera del acto (lugar, quién está, lo que se
+// dice, cuándo empieza cada escena), el sonido de las bandas sonoras de hoy
+// para ese género y lo que NO debe sonar, y escribe la pieza con su línea de
+// tiempo: la música sube donde sube la escena.
+export const MUSICA_GENERO = {
+  accion: 'percusión híbrida moderna (taikos, golpes de tráiler), ostinatos de cuerdas en staccato, graves sintetizados profundos y modernos, orquesta épica',
+  fantasia: 'orquesta cinematográfica amplia con cuerdas y trompas suaves, arpa, flautas, sintetizadores atmosféricos modernos',
+  isekai: 'orquesta cinematográfica con piano y pads modernos, sensación de asombro y aventura, percusión ligera',
+  mecha: 'percusión industrial moderna, graves sintetizados oscuros y modernos, metales graves sostenidos, cuerdas tensas',
+  romcom: 'piano ligero, pizzicato, guitarra acústica, cuerdas cálidas, ritmo pop instrumental suave y actual',
+  drama: 'piano íntimo, cuerdas emotivas, chelo solista, pads cálidos; balada instrumental de OST coreano',
+  slice_of_life: 'guitarra acústica, piano suave, celesta, percusión ligera; cálido y cotidiano',
+  terror: 'drones graves, texturas atonales, cuerdas disonantes y golpes súbitos; silencio tenso',
+  psicologico: 'pulsos graves minimalistas, piano frío, cuerdas sul ponticello, tensión que se acumula',
+  misterio: 'pulsos de cuerdas en staccato, piano grave, texturas electrónicas sutiles y modernas, tensión contenida',
+  deportes: 'percusión motivadora, cuerdas en ascenso, guitarra eléctrica cinematográfica, energía creciente',
+  sci_fi: 'sintetizadores cinematográficos modernos y limpios (estilo de película actual, nunca retro), cuerdas, pulsos electrónicos sutiles',
+  aventura: 'orquesta amplia con percusión de viaje, cuerdas y trompas, flautas étnicas, sensación de descubrimiento',
+  sobrenatural: 'texturas etéreas, cuerdas tenues, campanas, drones, instrumentos tradicionales asiáticos en eco',
+  supervivencia: 'percusión tribal moderna, drones graves, cuerdas tensas, respiración del silencio',
+  videojuego: 'banda sonora cinematográfica moderna con pulsos electrónicos limpios y orquesta (nunca música de videojuego retro)',
+  donghua: 'banda sonora moderna de drama chino de cultivo: guzheng, erhu, dizi y pipa sobre orquesta épica y percusión híbrida moderna',
+  transmigracion: 'banda sonora moderna de drama histórico chino: guzheng, erhu, flauta xiao, cuerdas orquestales y percusión cinematográfica',
+  naufragio: 'percusión orgánica, cuerdas amplias, flautas de madera, sensación de océano y aislamiento',
+  ascenso_social: 'banda sonora moderna de drama de venganza y poder: pulsos graves, cuerdas tensas en staccato, piano oscuro y estallidos épicos en los momentos de humillación y triunfo',
+  sistema_juego: 'banda sonora cinematográfica moderna con pulsos electrónicos limpios, cuerdas y percusión híbrida; épica en las recompensas',
+};
+export const MUSICA_SUBGENERO = {
+  romance: 'tema romántico de piano y cuerdas en los momentos de cercanía',
+  comedia: 'pizzicato y percusión ligera en los momentos cómicos',
+  dark: 'graves oscuros y armonías menores',
+  revenge: 'pulsos graves de tensión y estallido épico cuando se invierte el poder',
+  overpowered: 'estallidos heroicos y percusión poderosa cuando el protagonista muestra su fuerza',
+  mafia: 'bajo oscuro, cuerdas tensas, pulsos modernos de thriller',
+  misterio: 'pulsos de suspense contenidos',
+  psicologico: 'tensión minimalista',
+  ecchi: 'momentos juguetones y seductores con bajo suave y cuerdas ligeras (nunca vulgar)',
+  harem: 'motivo ligero y juguetón para las escenas de enredo',
+  harem_inverso: 'motivo romántico y juguetón para las escenas de enredo',
+  idols: 'producción pulida de pop instrumental moderno en las escenas de escenario',
+  militar: 'percusión marcial moderna, sin marcha de banda',
+  apocalipsis: 'drones graves, cuerdas desoladas',
+  medicina: 'piano y cuerdas contenidos, pulso tenso en las urgencias',
+  reencarnacion: 'motivo nostálgico de piano para el pasado',
+  viaje_tiempo: 'motivo misterioso que cambia de color entre épocas',
+  sistema_awakening: 'estallido épico en el despertar del Sistema',
+};
+export const MUSICA_PROHIBIDA = ['techno', 'synthwave', 'retro', 'vintage', '8-bit', 'chiptune', 'lo-fi', 'lofi', 'fanfare', 'edm', 'dubstep', 'disco', 'elevator', 'marching band', 'vocals', 'singing', 'choir', 'lyrics', 'rap'];
+
 export function promptMusica(datos, actos) {
   const u = datos.universo;
+  const f = datos.formulario || {};
+  const subs = subgenerosEfectivos(f).filter(s => MUSICA_SUBGENERO[s]);
+  const nombre = id => u.personajes.find(p => p.id === id)?.nombre || (u.variantes || []).find(v => v.id === id)?.nombre || id;
+  const lugar = id => u.escenarios.find(e => e.id === id)?.nombre || '';
+  const mmss = t => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, '0')}`;
   return {
-    sistema: 'Eres el COMPOSITOR y supervisor musical de un drama corto asiático. Escribes, para cada acto, la descripción de una pista instrumental para Lyria. Respondes SOLO JSON válido.',
-    mensaje: `${contextoEleccion(datos.formulario)}
+    sistema: 'Eres el DIRECTOR MUSICAL de un drama corto asiático de éxito de hoy. Compones, para cada acto, UNA pieza instrumental que dura todo el acto y sigue lo que pasa en él momento a momento. Tu referencia es el sonido de las bandas sonoras actuales de los dramas chinos y coreanos más vistos: producción moderna y pulida de estudio. Respondes SOLO JSON válido.',
+    mensaje: `${contextoEleccion(f)}
 
-DRAMA: ${u.titulo} — ${u.premisa}
+${contextoUniverso(datos)}
+
 IDENTIDAD MUSICAL DE LA SERIE (biblia): ${datos.biblia?.identidadMusical || ''}
 
-ACTOS DEL EPISODIO:
-${actos.map(a => `Acto ${a.numero} (≈ ${Math.round(a.segundos)} s): ${a.resumen}`).join('\n')}
+SONIDO DE PARTIDA PARA ESTE GÉNERO: ${MUSICA_GENERO[f.genero] || 'banda sonora cinematográfica moderna de drama asiático: cuerdas, piano y percusión híbrida'}.${subs.length ? `\nCAPAS POR SUBGÉNERO (todas se tienen que oír donde la escena lo pida): ${subs.map(s => MUSICA_SUBGENERO[s]).join('; ')}.` : ''}
 
-Para CADA acto escribe "brief": una descripción EN INGLÉS (Lyria rechaza cualquier otro idioma; ni una palabra en español, ni tildes ni eñes) de 25 a 60 palabras: género, instrumentos concretos, tempo aproximado, tono (tensión, aventura, triunfo, tristeza…) según lo que pasa en ese acto, dentro de la identidad musical de la serie. Instrumental, sin voces, sin letra, que no tape el diálogo.
+ACTOS DEL EPISODIO (con el minuto en que empieza cada escena dentro de su pieza):
+${actos.map(a => `── ACTO ${a.numero} · pieza de ${a.segundosPieza} s
+${(a.detalle || []).map(e => `[${mmss(e.inicio)}] ${e.titulo}${lugar(e.escenario) ? ' — ' + lugar(e.escenario) : ''}: ${e.accion}${e.frases?.length ? `\n   Se dice: ${e.frases.map(l => `${l.tipo === 'sistema' ? 'SISTEMA' : l.personaje === 'extra' ? (l.nombre || 'Extra') : nombre(l.personaje)}: «${l.texto}»`).join(' / ')}` : ''}`).join('\n')}`).join('\n\n')}
+
+Para CADA acto escribe "brief": la descripción de su pieza EN INGLÉS (ni una palabra en español, ni tildes ni eñes), de 90 a 200 palabras, con:
+1. Estilo: "modern cinematic score in the style of today's hit Chinese/Korean drama soundtracks, polished contemporary studio production" adaptado al género y a la época de ESTA historia.
+2. Instrumentos concretos, tempo en BPM y tono.
+3. LÍNEA DE TIEMPO con marcas (por ejemplo "0:00-0:25 …, 0:25-0:50 builds …, 1:10 peak …") que coincidan con los minutos de las escenas de arriba: la música sube en el clímax del acto, baja en los momentos íntimos y termina como pide el final del acto (golpe de suspense si es un gancho).
+4. Que deje espacio al diálogo (sin melodías protagonistas mientras se habla).
+NUNCA nombres estilos que no quieres (ni siquiera para negarlos): está prohibido escribir ${MUSICA_PROHIBIDA.map(p => `«${p}»`).join(', ')}.
 
 Devuelve JSON: {"pistas":[{"acto":1,"brief":"…"}]}`,
     temperatura: 0.6,

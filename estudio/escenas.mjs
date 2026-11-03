@@ -24,7 +24,7 @@ import { desglosar, revisar, escenasDelEpisodio, textoEscena, NOMBRE_ENCUADRE, n
 import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
 import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
 import { vozEscena, segundosVoz, vozVigente } from './voces.mjs';
-import { generarMusica, actosDelEpisodio } from './musica.mjs';
+import { generarMusica, actosDelEpisodio, musicaVigente } from './musica.mjs';
 import { crearControl } from './texto.mjs';
 import { segundosDe, esEcchi } from './prompts.mjs';
 import { direccionDeAspecto, textoDelLugar } from './imagenes.mjs';
@@ -102,7 +102,7 @@ function pintarAhora() {
   const enCurso = planos.filter(x => x.operacion?.nombre).length;
   const sinVoz = escenas.filter(e => !vozVigente(e)).length;
   const actos = actosDelEpisodio(ep);
-  const sinMusica = actos.filter(a => !ep.musica?.[a.numero]?.ruta).length;
+  const sinMusica = actos.filter(a => !musicaVigente(ep.musica?.[a.numero])).length;
   const fichasQueFaltan = u.personajes.filter(x => !x.referencia).map(x => x.nombre);
   const accion = planos.filter(x => x.tipo === 'accion').length;
   const vertical = d.formulario.formato !== '16:9';
@@ -167,8 +167,8 @@ function pintarAhora() {
   }).join('')}
   <div class="seccion"><h3>Música</h3></div>
   <div class="card">
-    <p class="nota">Una pista por acto, compuesta a partir de la identidad musical de la serie. El ambiente y los efectos ya los pone cada video.</p>
-    ${actos.map(a => { const m = ep.musica?.[a.numero]; return `<div class="pista"><strong>Acto ${a.numero}</strong>${m?.brief ? `<p class="corto">${escapar(m.brief)}</p>` : ''}${m?.ruta ? `<audio data-ruta="${escapar(m.ruta)}" controls preload="none"></audio>` : ''}</div>`; }).join('')}
+    <p class="nota">Una pieza por acto que dura todo el acto, compuesta por el director musical a partir de lo que pasa en cada escena. El ambiente y los efectos ya los pone cada video.</p>
+    ${actos.map(a => { const m = ep.musica?.[a.numero]; return `<div class="pista"><strong>Acto ${a.numero}</strong>${musicaVigente(m) || (m?.brief && m.version) ? `<p class="corto">${escapar(m.brief)}</p>` : ''}${musicaVigente(m) ? `<audio data-ruta="${escapar(m.ruta)}" controls preload="none"></audio>` : ''}</div>`; }).join('')}
     ${caja('musica')}
     ${sinMusica ? `<button type="button" class="btn ancho" data-accion="musica">Generar la música (${sinMusica} ${sinMusica === 1 ? 'pista' : 'pistas'})</button>` : `<button type="button" class="btn-sec" data-accion="rehacer-musica">Rehacer la música</button>`}
   </div>`;

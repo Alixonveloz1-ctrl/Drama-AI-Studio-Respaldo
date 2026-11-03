@@ -63,8 +63,8 @@ el valor resuelto de cada una):
 | `IMAGE_MODEL_LOCATIONS` | JSON `{"modelo":"region"}` |
 | `VEO_MODEL` | `veo-3.1-lite-generate-001` |
 | `TTS_LANGUAGE` | `es-US` (voces Chirp 3 HD de Text-to-Speech, sin respaldo automático) |
-| `MUSIC_MODEL` | `lyria-002` |
-| `MUSIC_LOCATION` | según modelo |
+| `MUSIC_MODEL` | `lyria-3-pro-preview` (piezas de hasta 184 s, la de la parte de cortos del estudio de anime) |
+| `MUSIC_LOCATION` | `global` |
 | `STT_MODEL` / `STT_LANGUAGE` | `latest_long` / `es-US` |
 | `GCS_PREFIX` | `drama-studio` |
 | `MONTAJE_JOB` | `drama-studio-montage` |

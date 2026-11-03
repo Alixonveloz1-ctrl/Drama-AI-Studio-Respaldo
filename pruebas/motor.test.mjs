@@ -540,17 +540,28 @@ test('subtítulos: el texto del guion con los tiempos reales; si casa poco, repa
   assert.ok(Math.abs(frases.at(-1).fin - 3) < 1e-9);
 });
 
-test('música: un acto por bloque (la prueba de 3 min se parte en dos) y el brief tiene que estar en inglés', () => {
+test('música: un acto por bloque (la prueba de 3 min se parte en dos); pieza larga en inglés con línea de tiempo y sin estilos prohibidos', () => {
   const ep = { bloques: [{ escenas: [{ id: 'e1', titulo: 'a', accion: 'x', lineas: [{ texto: 'uno dos' }] }, { id: 'e2', titulo: 'b', accion: 'y', lineas: [{ texto: 'tres' }] }] }] };
   const actos = MU.actosDelEpisodio(ep);
   assert.deepEqual(actos.map(a => a.escenas), [['e1'], ['e2']]);
-  const r = MU.validarMusica({ pistas: [{ acto: 1, brief: 'Tense score with taiko drums, guzheng and low strings, slow tempo, rising toward a confrontation.' }, { acto: 2, brief: 'Música épica con tambores, cuerdas graves y metales que crecen poco a poco hacia el triunfo final del protagonista en la plaza.' }] }, actos);
-  assert.ok(r.briefs[1]);
+  assert.ok(actos[0].segundosPieza >= 15 && actos[0].segundosPieza <= MU.MAX_PIEZA);
+  assert.equal(actos[1].detalle[0].inicio, 0, 'cada acto empieza en 0:00 de su pieza');
+  const largo = 'Modern cinematic score in the style of hit Chinese drama soundtracks, polished contemporary studio production. Guzheng, erhu and dizi over full strings and hybrid percussion, 84 BPM, D minor. 0:00-0:20 sparse guzheng and low string pad under the dialogue; 0:20-0:45 pulsing staccato cellos as the debt collector arrives; 0:45-1:05 hybrid percussion builds; 1:05 peak with full strings and taiko hits when he refuses to kneel; 1:15 sudden drop to a single erhu note held as a suspense sting. Leaves space for dialogue, no lead melody while characters speak, warm low end, wide stereo.';
+  const r = MU.validarMusica({ pistas: [{ acto: 1, brief: largo }, { acto: 2, brief: 'Música épica con tambores, cuerdas graves y metales que crecen poco a poco hacia el triunfo final del protagonista en la plaza ' + largo }] }, actos);
+  assert.ok(r.briefs[1], r.problemas.join('; '));
   assert.ok(r.problemas.some(p => p.includes('español')));
+  const corto = MU.validarMusica({ pistas: [{ acto: 1, brief: 'Tense score with taiko drums, guzheng and low strings, slow tempo, rising toward a confrontation.' }] }, [actos[0]]);
+  assert.ok(corto.problemas.some(p => p.includes('al menos 90')), 'una descripción corta se reescribe');
+  const prohibida = MU.validarMusica({ pistas: [{ acto: 1, brief: largo + ' Never techno.' }] }, [actos[0]]);
+  assert.ok(prohibida.problemas.some(p => p.includes('techno')), 'nombrar un estilo prohibido, ni para negarlo, se reescribe');
+  const p = P.promptMusica({ formulario, universo: universoValido(), biblia: { identidadMusical: 'x' } }, actos);
+  assert.match(p.mensaje, /SONIDO DE PARTIDA PARA ESTE GÉNERO/);
+  assert.match(p.mensaje, /\[0:00\]/, 'el director ve el minuto de cada escena');
+  assert.match(p.mensaje, /Premisa:/, 'y la historia entera');
 });
 
 test('montaje: cada escena dura su narración, los planos se reparten por peso, voces y música en su instante, sin duplicar el Sistema', () => {
-  const datos = { formulario, universo: universoValido(), episodios: { 1: { estado: 'completo', musica: { 1: { ruta: 'r/m1.wav', brief: 'x' } }, bloques: [{ escenas: [
+  const datos = { formulario, universo: universoValido(), episodios: { 1: { estado: 'completo', musica: { 1: { ruta: 'r/m1.mp3', brief: 'x', version: MU.VERSION_MUSICA } }, bloques: [{ escenas: [
     { id: 'e1', titulo: 'La deuda', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Hola. ¿Me oyes?' }, { tipo: 'sistema', personaje: null, texto: 'Misión cumplida.' }],
       voz: { version: VZ.VERSION_VOZ, tramos: [{ ruta: 'r/v1.wav', segundos: 2, lineas: [0], tiempos: [{ inicio: 0.1, fin: 1.9 }] }, { ruta: 'r/v2.wav', segundos: 1, lineas: [1] }] },
       planos: [{ peso: 3, tipo: 'accion', imagen: { ruta: 'r/p1.png' }, video: { ruta: 'r/p1.mp4' }, sistema: 'Misión cumplida.' }, { peso: 1, tipo: 'cobertura', imagen: { ruta: 'r/p2.png' } }] },
@@ -571,7 +582,7 @@ test('montaje: cada escena dura su narración, los planos se reparten por peso, 
   assert.throws(() => MO.hojaDeVideo(datos, 1), /Falta la imagen del plano 2/);
   const zip = MO.hojaDeZip(datos, 1);
   assert.ok(zip.archivos.some(a => a.nombre === 'videos/escena-01-plano-01.mp4'));
-  assert.ok(zip.archivos.some(a => a.nombre === 'musica/acto-1.wav'));
+  assert.ok(zip.archivos.some(a => a.nombre === 'musica/acto-1.mp3'));
   assert.ok(zip.textos.some(t => t.nombre === 'guion.txt' && /ESCENA 1 — La deuda/.test(t.contenido)));
 });
 

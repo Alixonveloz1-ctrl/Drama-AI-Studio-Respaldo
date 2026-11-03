@@ -61,7 +61,7 @@ test('los endpoints corren en Node.js, nunca en Edge, y caben en el límite de V
   }
   assert.ok(!existsSync(join(RAIZ, 'middleware.js')), 'sin middleware Edge');
   const vercel = JSON.parse(readFileSync(join(RAIZ, 'vercel.json'), 'utf8'));
-  const limites = { 'salud.js': 15, 'texto.js': 60, 'proyectos.js': 30, 'imagen.js': 60, 'urls.js': 30, 'video-inicio.js': 60, 'video-estado.js': 30, 'voz.js': 60, 'musica.js': 60, 'transcripcion.js': 30, 'montaje.js': 30 };
+  const limites = { 'salud.js': 15, 'texto.js': 60, 'proyectos.js': 30, 'imagen.js': 60, 'urls.js': 30, 'video-inicio.js': 60, 'video-estado.js': 30, 'voz.js': 60, 'musica.js': 300, 'transcripcion.js': 30, 'montaje.js': 30 };
   for (const nombre of funciones) {
     assert.ok(vercel.functions[`api/${nombre}`], `vercel.json no fija maxDuration de api/${nombre}`);
     if (limites[nombre]) assert.equal(vercel.functions[`api/${nombre}`].maxDuration, limites[nombre], nombre);
@@ -71,7 +71,9 @@ test('los endpoints corren en Node.js, nunca en Edge, y caben en el límite de V
 
 test('solo los identificadores de modelo de la especificación', () => {
   const permitidos = new Set(['gemini-3.1-pro-preview', 'gemini-3.1-flash-image', 'gemini-3-pro-image',
-    'veo-3.1-lite-generate-001', 'veo-3.1-fast-generate-001', 'veo-3.1-generate-001', 'lyria-002']);
+    'veo-3.1-lite-generate-001', 'veo-3.1-fast-generate-001', 'veo-3.1-generate-001',
+    // Música: Lyria 3 Pro, la de la parte de cortos del estudio de anime (decisión del dueño).
+    'lyria-3-pro-preview']);
   for (const ruta of [...de('.js', '.mjs', '.cjs', '.html', '.py')]) {
     if (rel(ruta).startsWith('pruebas/')) continue;
     for (const [modelo] of readFileSync(ruta, 'utf8').matchAll(/\b(?:gemini|veo|lyria)-[a-z0-9][\w.-]*\b|\bimagen-\d[\w.-]*\b/g)) {

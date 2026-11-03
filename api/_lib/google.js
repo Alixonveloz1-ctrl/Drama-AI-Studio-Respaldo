@@ -39,9 +39,9 @@ const UBICACION_IMAGEN_BASE = {
   'gemini-3.1-flash-image': 'global',
   'gemini-3-pro-image': 'global',
 };
-// Lyria se sirve por región; "según modelo" en la especificación.
+// Lyria 3 Pro se sirve en global (como en la parte de cortos del estudio de anime).
 const UBICACION_MUSICA_BASE = {
-  'lyria-002': 'us-central1',
+  'lyria-3-pro-preview': 'global',
 };
 
 function ubicacionesImagen() {
@@ -70,7 +70,7 @@ const cfg = {
   // Voz: Chirp 3 HD de Text-to-Speech (decisión del dueño; lo mismo que
   // acabó usando su estudio de anime). SIN motor de respaldo (regla 2.7).
   get idiomaVoz()       { return leer('TTS_LANGUAGE', 'es-US'); },
-  get modeloMusica()    { return leer('MUSIC_MODEL', 'lyria-002'); },
+  get modeloMusica()    { return leer('MUSIC_MODEL', 'lyria-3-pro-preview'); },
   get ubicacionMusica() { return leer('MUSIC_LOCATION', UBICACION_MUSICA_BASE[this.modeloMusica] || this.region); },
   get modeloSubtitulos(){ return leer('STT_MODEL', 'latest_long'); },
   get idiomaSubtitulos(){ return leer('STT_LANGUAGE', 'es-US'); },

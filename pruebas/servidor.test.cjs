@@ -230,8 +230,8 @@ test('modelos y variables: los de la especificación, sin sustitutos', () => {
   assert.deepEqual(c.regionesImagen, ['us-central1', 'europe-west4', 'us-east4']);
   assert.equal(c.modeloVideo, 'veo-3.1-lite-generate-001');
   assert.equal(c.idiomaVoz, 'es-US');
-  assert.equal(c.modeloMusica, 'lyria-002');
-  assert.equal(c.ubicacionMusica, 'us-central1');
+  assert.equal(c.modeloMusica, 'lyria-3-pro-preview');
+  assert.equal(c.ubicacionMusica, 'global');
   assert.equal(c.modeloSubtitulos, 'latest_long');
   assert.equal(c.idiomaSubtitulos, 'es-US');
   assert.equal(c.prefijo, 'drama-studio');
@@ -752,21 +752,32 @@ test('voz: las voces se piden a Google (con su género) y cada tramo es una sola
   assert.equal(sinVoz.statusCode, 400);
 });
 
-test('música: un brief en español se rechaza antes de llamar a Lyria; en inglés se guarda en el bucket', async () => {
+test('música: Lyria 3 Pro como en el estudio de anime (interactions, pieza larga, MP3); un brief en español se rechaza antes de pagar', async () => {
   conCuentaDeServicio();
   process.env.GCS_OUTPUT_BUCKET = 'bucket-prueba';
   const musica = require('../api/musica');
-  const { vistas } = mundoGoogle(() => new Response(JSON.stringify({ predictions: [{ bytesBase64Encoded: WAV.toString('base64'), mimeType: 'audio/wav' }] })));
+  // MP3 mínimo: 10 tramas MPEG1 Layer III de 128 kbps a 44,1 kHz (≈ 0,26 s).
+  const trama = Buffer.alloc(417); trama[0] = 0xff; trama[1] = 0xfb; trama[2] = 0x90; trama[3] = 0x64;
+  const mp3 = Buffer.concat(Array(10).fill(trama));
+  const { vistas } = mundoGoogle(() => new Response(JSON.stringify({ status: 'completed', outputs: [{ type: 'text', text: 'ok' }, { type: 'audio', mime_type: 'audio/mpeg', data: mp3.toString('base64') }] })));
   const mal = respuesta();
-  await musica(pedirA('/api/musica', { proyecto: 'pimagen0001', clave: 'musica-ep1-1', brief: 'Música épica con tambores y guzheng para la revancha del héroe.' }), mal);
+  await musica(pedirA('/api/musica', { proyecto: 'pimagen0001', clave: 'musica-ep1-1', segundos: 90, brief: 'Música épica con tambores y guzheng para la revancha del héroe.' }), mal);
   assert.equal(mal.statusCode, 400);
   assert.equal(vistas.length, 0);
+  const largo = respuesta();
+  await musica(pedirA('/api/musica', { proyecto: 'pimagen0001', clave: 'musica-ep1-1', segundos: 400, brief: 'Modern cinematic score with guzheng and strings.' }), largo);
+  assert.equal(largo.statusCode, 400, 'más de 184 s no existe en Lyria 3 Pro');
   const bien = respuesta();
-  await musica(pedirA('/api/musica', { proyecto: 'pimagen0001', clave: 'musica-ep1-1', brief: 'Tense cinematic score with taiko drums, guzheng and low strings, building to a triumphant brass fanfare.' }), bien);
+  await musica(pedirA('/api/musica', { proyecto: 'pimagen0001', clave: 'musica-ep1-1-v2', segundos: 92, brief: 'Modern cinematic score with taiko drums, guzheng and low strings. 0:00-0:30 sparse; 0:30 builds; 1:10 peak.' }), bien);
   assert.equal(bien.statusCode, 200, JSON.stringify(bien.valor));
-  assert.equal(bien.valor.segundos, 2);
-  assert.match(vistas[0].url, /us-central1-aiplatform.*lyria-002:predict$/);
-  assert.match(vistas[0].cuerpo.instances[0].negative_prompt, /vocals, singing/);
+  assert.equal(bien.valor.ruta, base + 'musica-ep1-1-v2.mp3');
+  assert.ok(Math.abs(bien.valor.segundos - 10 * 1152 / 44100) < 0.01, 'la duración se mide en el MP3');
+  assert.equal(vistas[0].url, 'https://aiplatform.googleapis.com/v1beta1/projects/proyecto-drama/locations/global/interactions');
+  assert.equal(vistas[0].cuerpo.model, 'lyria-3-pro-preview');
+  const texto = vistas[0].cuerpo.input[0].text;
+  assert.equal(vistas[0].cuerpo.input[0].type, 'text');
+  assert.ok(texto.startsWith('Instrumental music only. No vocals, lyrics or speech. Requested duration 92 seconds. Modern cinematic score'), texto);
+  assert.match(texto, /Avoid: .*techno.*chiptune.*brass fanfares/);
 });
 
 test('transcripción: lee la voz del bucket y devuelve los tiempos de cada palabra', async () => {
@@ -790,7 +801,7 @@ test('transcripción: lee la voz del bucket y devuelve los tiempos de cada palab
 
 const hojaPrueba = () => ({ modo: 'video', episodio: 1, formato: '9:16',
   planos: [{ tipo: 'video', ruta: base + 'plano-e1-1.mp4', duracion: 4, sistema: 'Misión cumplida. $(rm -rf /) `x`' }, { tipo: 'imagen', ruta: base + 'plano-e1-2.png', duracion: 2.5 }],
-  voces: [{ ruta: base + 'voz-e1-1.wav', inicio: 0.35 }], musica: [{ ruta: base + 'musica-ep1-1.wav', inicio: 0, duracion: 6.5 }],
+  voces: [{ ruta: base + 'voz-e1-1.wav', inicio: 0.35 }], musica: [{ ruta: base + 'musica-ep1-1.mp3', inicio: 0, duracion: 6.5 }],
   subtitulos: [{ inicio: 0.35, fin: 2, texto: "Hola'; rm -rf / #" }] });
 
 test('hoja de montaje: el guion lo escribe el servidor, es bash válido y ningún texto del navegador entra en él', () => {

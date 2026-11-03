@@ -15,7 +15,7 @@ import { llamar } from './red.mjs';
 import { pedirMedio, recordarUrl } from './medios.mjs';
 import { errorDetenido, esCuota } from './texto.mjs';
 import { escenasDelEpisodio, nombreDe } from './desglose.mjs';
-import { actosDelEpisodio } from './musica.mjs';
+import { actosDelEpisodio, musicaVigente } from './musica.mjs';
 import { frasesDeLinea } from './subtitulos.mjs';
 import { vozVigente } from './voces.mjs';
 
@@ -59,7 +59,7 @@ export function estadoDelEpisodio(datos, numero) {
     sinVideo: planos.filter(p => p.tipo === 'accion' && (!p.video || p.videoObsoleto)).length,
     sinVoz: escenas.filter(e => !vozVigente(e)).length,
     actos: actos.length,
-    sinMusica: actos.filter(a => !ep?.musica?.[a.numero]?.ruta).length,
+    sinMusica: actos.filter(a => !musicaVigente(ep?.musica?.[a.numero])).length,
   };
 }
 
@@ -97,7 +97,7 @@ export function hojaDeVideo(datos, numero) {
     t0 += D;
   }
   const musica = actosDelEpisodio(ep)
-    .filter(a => ep.musica?.[a.numero]?.ruta && a.escenas.length)
+    .filter(a => musicaVigente(ep.musica?.[a.numero]) && a.escenas.length)
     .map(a => {
       const desde = inicioDe[a.escenas[0]]?.inicio ?? 0;
       const hasta = a.escenas.reduce((n, id) => n + (inicioDe[id]?.duracion || 0), 0);
@@ -126,7 +126,7 @@ export function hojaDeZip(datos, numero) {
     });
     (e.voz?.tramos || []).forEach((t, i) => archivos.push({ ruta: t.ruta, nombre: `voces/escena-${dos(n + 1)}-tramo-${i + 1}.wav` }));
   });
-  for (const [acto, m] of Object.entries(ep.musica || {})) if (m.ruta) archivos.push({ ruta: m.ruta, nombre: `musica/acto-${acto}.wav` });
+  for (const [acto, m] of Object.entries(ep.musica || {})) if (musicaVigente(m)) archivos.push({ ruta: m.ruta, nombre: `musica/acto-${acto}.${/\.mp3$/i.test(m.ruta) ? 'mp3' : 'wav'}` });
   if (ep.resultados?.video?.ruta) archivos.push({ ruta: ep.resultados.video.ruta, nombre: `episodio-${dos(numero)}.mp4` });
 
   const guion = escenas.map((e, n) => `ESCENA ${n + 1} — ${e.titulo}\n${e.accion}\n${e.lineas.map(l => `${l.tipo === 'sistema' ? 'SISTEMA' : l.personaje === 'extra' ? (l.nombre || 'Extra') : nombreDe(u, l.personaje)}${l.tipo === 'pensamiento' ? ' (piensa)' : ''}: ${l.texto}`).join('\n')}`).join('\n\n');

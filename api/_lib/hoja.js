@@ -38,6 +38,9 @@ const f3 = n => Number(n).toFixed(3);
 const pad = (n, l = 3) => String(n).padStart(l, '0');
 
 // Envuelve el texto de un panel en líneas cortas (drawtext no parte líneas).
+// La música de Lyria 3 Pro llega en MP3; la de antes, en WAV.
+const extMusica = ruta => (/\.mp3$/i.test(ruta) ? 'mp3' : 'wav');
+
 function envolver(texto, ancho) {
   const lineas = [];
   let actual = '';
@@ -138,7 +141,7 @@ zip -r -0 -q "../${archivo}" .
       : `segmento_imagen m/p${n}.${ext} seg/s${n}.mp4 ${f3(p.duracion)} ${i % 4} ${sis}`);
   });
   h.voces.forEach((v, i) => descargas.push([gs(v.ruta), `a/v${pad(i + 1, 4)}.wav`]));
-  h.musica.forEach((m, i) => descargas.push([gs(m.ruta), `a/m${pad(i + 1)}.wav`]));
+  h.musica.forEach((m, i) => descargas.push([gs(m.ruta), `a/m${pad(i + 1)}.${extMusica(m.ruta)}`]));
   textos.push([`${carpeta}/episodio.srt`, srt(h.subtitulos)]);
   descargas.push([gs(`${carpeta}/episodio.srt`), 'episodio.srt']);
 
@@ -148,7 +151,7 @@ zip -r -0 -q "../${archivo}" .
   const vocesEntradas = h.voces.map((_, i) => `-i a/v${pad(i + 1, 4)}.wav`).join(' ');
   // Música: cada pista en bucle durante su acto, con fundidos.
   const musicaFiltro = h.musica.map((m, i) => `[${i}:a]aresample=48000,aformat=channel_layouts=stereo,atrim=0:${f3(m.duracion)},afade=t=in:d=1.2,afade=t=out:st=${f3(Math.max(0, m.duracion - 1.5))}:d=1.5,adelay=${Math.round(m.inicio * 1000)}:all=1[m${i}]`).join(';');
-  const musicaEntradas = h.musica.map((_, i) => `-stream_loop -1 -i a/m${pad(i + 1)}.wav`).join(' ');
+  const musicaEntradas = h.musica.map((m, i) => `-stream_loop -1 -i a/m${pad(i + 1)}.${extMusica(m.ruta)}`).join(' ');
   const tamSub = h.formato === '16:9' ? 15 : 11;
   const margenSub = h.formato === '16:9' ? 22 : 56;
 
