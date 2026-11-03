@@ -484,12 +484,12 @@ test('imagen: contrato de estilo primero, ficha con su contrato, endpoint global
   assert.match(partes[0].text, /^RENDERING \(non-negotiable.*a LIVE-ACTION PHOTOGRAPH/);
   assert.match(partes[0].text, /STRICTLY FORBIDDEN: any drawn or painted look — illustration, digital painting/);
   assert.doesNotMatch(partes[0].text, /semi-realistic (?!illustration)/i, 'la palabra que el modelo lee como dibujo no se pide');
-  assert.match(partes[0].text, /render THIS image as the live-action photograph described here\.$/);
+  assert.match(partes[0].text, /never swap the person for a different actor\.$/);
   assert.match(partes.at(-1).text, /FINAL CHECK before rendering: this is a live-action photograph/);
   assert.ok(partes[1].inlineData, 'continuidad');
   assert.match(partes[2].text, /^This reference is the immediately preceding physical state/);
   assert.ok(partes[3].inlineData, 'ficha');
-  assert.match(partes[4].text, /^CHARACTER REFERENCE above: this is Lin Feng\. Use it ONLY as the identity anchor/);
+  assert.match(partes[4].text, /^CHARACTER REFERENCE above: this is Lin Feng\. IDENTITY IS LOCKED to this image/);
   assert.match(partes.at(-1).text, /ABSOLUTELY NO TEXT[\s\S]*Scene to show:\nLin Feng kneels/);
   assert.equal(cuerpo.generationConfig.imageConfig.aspectRatio, '9:16');
 });
