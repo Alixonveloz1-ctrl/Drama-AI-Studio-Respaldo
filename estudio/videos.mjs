@@ -29,6 +29,7 @@
 import { llamar } from './red.mjs';
 import { pedirMedio, recordarUrl } from './medios.mjs';
 import { errorDetenido, esBloqueo, esCuota } from './texto.mjs';
+import { sexoDe } from './imagenes.mjs';
 
 export const MODELOS_VIDEO = [
   { valor: 'veo-3.1-lite-generate-001', etiqueta: 'Veo 3.1 Lite (predeterminado)' },
@@ -45,13 +46,36 @@ const CONSULTAS = 72;         // 12 minutos como mucho
 
 // ─── Bloques literales (sección 13.2) ───
 export const ACTUACION = 'PERFORMANCE — CRITICAL: the characters are acting inside the scene and stay in the story — never posing, never turning toward the lens, never making eye contact with the camera, never addressing the viewer. The angle on them is ALREADY set by the first frame; keep that relationship to them for the whole clip.';
+// LA VOZ DE CADA PERSONAJE ES UNA SOLA (regla del dueño): Veo no guarda
+// voces fijas como Chirp, así que la misma descripción de voz, palabra por
+// palabra, viaja en TODAS las peticiones de ese personaje — diálogo y
+// pensamiento — para que suene el mismo actor en todas sus tomas. La
+// descripción se deriva siempre igual de su sexo, su edad y su rol, así
+// que no depende de que nadie la escriba a mano ni cambia entre clips.
+export function descripcionVoz(p) {
+  const mujer = sexoDe(p || {}) === 'mujer';
+  const edad = Number(p?.edad) || 0;
+  const decada = edad >= 50 ? (mujer ? 'in her fifties' : 'in his fifties')
+    : edad >= 40 ? (mujer ? 'in her forties' : 'in his forties')
+    : edad >= 30 ? (mujer ? 'in her thirties' : 'in his thirties')
+    : edad > 0 ? (mujer ? 'in her twenties' : 'in his twenties') : 'adult';
+  const rol = String(p?.rol || '').toLowerCase();
+  const tono = /protagonista|principal|héroe|heroe|hero/.test(rol)
+    ? (mujer ? 'clear, warm and determined' : 'deep, calm and confident')
+    : /antagonista|villano|villana|enemy|malo/.test(rol)
+      ? (mujer ? 'cold, sharp and commanding' : 'rough, harsh and arrogant')
+      : (mujer ? 'soft, clear and natural' : 'steady, clear and natural');
+  return `${mujer ? "a woman's voice" : "a man's voice"}, ${decada}, ${tono}, neutral Latin American Spanish accent, natural pace, clear diction`;
+}
+export const VOZ_SISTEMA = 'a synthetic, slightly robotic system voice, flat, even and emotionless, neutral Latin American Spanish accent, measured pace';
+
 // La voz de la toma: el texto exacto que Veo tiene que decir es el ancla
 // del plano (el pedazo de la línea que le corresponde), en español.
 export const bloqueVoz = voz => {
   const texto = String(voz.texto || '').replace(/"/g, '').trim();
-  if (voz.tipo === 'dialogo') return `SPOKEN DIALOGUE — CRITICAL: ${voz.nombre} speaks ALOUD in this shot, in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". Only ${voz.nombre} speaks, the mouth articulates these exact words, and all speech is in Spanish only — never Chinese, never English.`;
-  if (voz.tipo === 'pensamiento') return `VOICE-OVER NARRATION — CRITICAL: nobody speaks on screen in this shot and every mouth stays closed, but the voice-over of ${voz.nombre} narrates in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". The voice-over is in Spanish only — never Chinese, never English.`;
-  return `SYSTEM VOICE-OVER — CRITICAL: nobody speaks on screen; a synthetic system voice announces in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". Spanish only — never Chinese, never English.`;
+  if (voz.tipo === 'dialogo') return `SPOKEN DIALOGUE — CRITICAL: ${voz.nombre} speaks ALOUD in this shot, in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". Only ${voz.nombre} speaks, the mouth articulates these exact words, and all speech is in Spanish only — never Chinese, never English. THE VOICE IS ALWAYS THIS EXACT VOICE (the same voice in every shot of this character): ${voz.descripcion}.`;
+  if (voz.tipo === 'pensamiento') return `VOICE-OVER NARRATION — CRITICAL: nobody speaks on screen in this shot and every mouth stays closed, but the voice-over of ${voz.nombre} narrates in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". The voice-over is in Spanish only — never Chinese, never English. THE VOICE IS ALWAYS THIS EXACT VOICE, the same voice ${voz.nombre} speaks aloud with: ${voz.descripcion}.`;
+  return `SYSTEM VOICE-OVER — CRITICAL: nobody speaks on screen; a synthetic system voice announces in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". Spanish only — never Chinese, never English. THE SYSTEM VOICE IS ALWAYS THE SAME VOICE: ${voz.descripcion}.`;
 };
 export const SIN_HABLA = 'NO SPEAKING PERFORMANCE: no character speaks aloud in this shot: mouths stay closed, the character reacts, listens or thinks, with no lip movement of speech.';
 
@@ -83,10 +107,10 @@ export function vozDelPlano(datos, escena, plano) {
   if (!linea || !['dialogo', 'pensamiento', 'sistema'].includes(linea.tipo)) return null;
   const texto = String(plano?.ancla || '').trim();
   if (!texto) return null;
-  const nombre = linea.tipo === 'sistema'
-    ? 'The System'
-    : (datos?.universo?.personajes || []).find(p => p.id === linea.personaje)?.nombre || linea.nombre || 'The character';
-  return { tipo: linea.tipo, nombre, texto };
+  if (linea.tipo === 'sistema') return { tipo: 'sistema', nombre: 'The System', texto, descripcion: VOZ_SISTEMA };
+  const personaje = (datos?.universo?.personajes || []).find(p => p.id === linea.personaje);
+  const nombre = personaje?.nombre || linea.nombre || 'The character';
+  return { tipo: linea.tipo, nombre, texto, descripcion: descripcionVoz(personaje || { nombre }) };
 }
 export const ENCUADRE_BLOQUEADO = 'FRAMING — LOCKED: the first frame sets the camera position, the lens and the shot size for the ENTIRE clip. Hold that exact framing from first frame to last: same distance to the subject, same lens, same shot size, same headroom, same amount of the room visible. The camera sits on a locked tripod unless the SHOT MOTION line names a camera move — if it names none, there is no zoom, no push-in, no pull-back and no reframing at any point.';
 export const ESTILO = 'STYLE — ABSOLUTELY MANDATORY: preserve the exact rendering of the first frame, pixel for pixel in look. Do not restyle it, do not turn it into animation, illustration or a videogame cinematic while moving.';

@@ -511,7 +511,14 @@ test('video: Veo dice el texto exacto de la toma en español (diálogo en pantal
   assert.equal(V.tipoDeAncla(escena, { ancla: 'palabras que no están' }), '');
   // Diálogo: quien habla, qué dice (su pedazo exacto) y en qué idioma.
   const vozD = V.vozDelPlano(datos, escena, { ancla: 'Te lo digo claro' });
-  assert.deepEqual(vozD, { tipo: 'dialogo', nombre: 'Lin Feng', texto: 'Te lo digo claro' });
+  assert.equal(vozD.tipo, 'dialogo');
+  assert.equal(vozD.nombre, 'Lin Feng');
+  assert.equal(vozD.texto, 'Te lo digo claro');
+  assert.match(vozD.descripcion, /a man's voice, in his twenties, deep, calm and confident/);
+  // La descripción de voz del personaje es LA MISMA en diálogo y en
+  // pensamiento: es la regla del dueño, una sola voz por personaje.
+  assert.equal(V.vozDelPlano(datos, escena, { ancla: 'Si me quedo' }).descripcion, vozD.descripcion);
+  assert.match(V.promptVideo({ movimiento: 'Lin Feng speaks.' }, u.escenarios[0], { voz: vozD }), /THE VOICE IS ALWAYS THIS EXACT VOICE/);
   const habla = V.promptVideo({ movimiento: 'Lin Feng speaks.' }, u.escenarios[0], { voz: vozD });
   assert.match(habla, /SPOKEN DIALOGUE — CRITICAL: Lin Feng speaks ALOUD/);
   assert.match(habla, /saying EXACTLY these words and nothing else: "Te lo digo claro"/);
@@ -528,7 +535,10 @@ test('video: Veo dice el texto exacto de la toma en español (diálogo en pantal
   assert.ok(!V.negativoVideo({ movimiento: '' }, u.escenarios[0], { voz: vozP }).includes('voice-over'), 'pero la narración en off no se prohíbe');
   // Sistema: voz sintética en off con su texto.
   const vozS = V.vozDelPlano(datos, escena, { ancla: 'Misión cumplida' });
-  assert.deepEqual(vozS, { tipo: 'sistema', nombre: 'The System', texto: 'Misión cumplida' });
+  assert.equal(vozS.tipo, 'sistema');
+  assert.equal(vozS.nombre, 'The System');
+  assert.equal(vozS.texto, 'Misión cumplida');
+  assert.equal(vozS.descripcion, V.VOZ_SISTEMA, 'el Sistema también tiene una sola voz fija');
   assert.match(V.promptVideo({ movimiento: 'A panel glows.' }, u.escenarios[0], { voz: vozS }), /SYSTEM VOICE-OVER — CRITICAL/);
   // Sin línea localizada: sin voz, solo efectos, como siempre.
   assert.equal(V.vozDelPlano(datos, escena, { ancla: 'palabras que no están' }), null);
