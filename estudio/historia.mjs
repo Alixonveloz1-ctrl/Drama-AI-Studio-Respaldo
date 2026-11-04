@@ -13,6 +13,7 @@ import { GENEROS, SUBGENEROS, PUBLICOS, FORMATOS, SUBGENEROS_ADULTOS, PARES_EXCL
 import { proyectoActual, empezar, guardar, abrir, cerrar, nombreDe } from './proyectos.mjs';
 import { generarIdeas, generarUniverso, escribirGuion, segundosDelEpisodio, validarBiblia } from './guion.mjs';
 import { crearControl, pedirTexto, parsearJSON } from './texto.mjs';
+import { conceptoDesdeEnlace } from './inspiracion.mjs';
 import { promptBiblia } from './prompts.mjs';
 import { explicar } from './red.mjs';
 import { escapar, avisar } from './interfaz.mjs';
@@ -117,6 +118,11 @@ function htmlFormulario(d) {
       <option value="completo"${f.cierre !== 'suspenso' ? ' selected' : ''}>Completo: la historia termina</option>
       <option value="suspenso"${f.cierre === 'suspenso' ? ' selected' : ''}>En suspenso: gancho para el siguiente episodio</option></select></label>
     <label class="campo">Tu concepto <span class="nota">(opcional)</span><textarea name="concepto" rows="4" placeholder="Una situación, un personaje, una época…">${escapar(f.concepto)}</textarea></label>
+    <div class="campo">¿Partir de un video que ya funciona? <span class="nota">(opcional)</span>
+      <input type="url" name="enlace" placeholder="Pega aquí el enlace de YouTube" inputmode="url">
+      <button type="button" class="btn-sec ancho" data-accion="inspiracion">Traer el concepto de ese video</button>
+      <p class="nota">Leo la historia de ese video y te dejo su concepto y su motor escritos arriba, en «Tu concepto», para que lo revises y lo uses tal cual o lo ajustes antes de generar las ideas.</p>
+    </div>
     <div id="h-form-estado"></div>
     <button type="button" class="btn ancho" data-accion="ideas" id="h-boton-ideas">Generar tres ideas</button>
   </div>`;
@@ -263,6 +269,7 @@ async function alPulsar(evento) {
   if (ocupado) return;
   if (accion === 'continuar') { document.dispatchEvent(new CustomEvent('ir-a', { detail: 'personajes' })); return; }
   if (accion === 'ideas') return trabajar('formulario', 'Escribiendo tres ideas', accionIdeas);
+  if (accion === 'inspiracion') return trabajar('formulario', 'Leyendo la historia de ese video', accionInspiracion);
   if (accion === 'elegir') return trabajar('ideas', 'Desarrollando el universo', o => accionElegir(boton.dataset.id, o));
   if (accion === 'biblia') return trabajar('biblia', 'El director escribe la biblia de la serie', accionBiblia);
   if (accion === 'guion') return trabajar('guion', 'Escribiendo el guion', accionGuion);
@@ -313,6 +320,25 @@ async function trabajar(donde, etiqueta, tarea) {
   }
   // Lo recién generado se pone a la vista.
   if (destino) raiz.querySelector(destino)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function accionInspiracion(opciones) {
+  const form = raiz.querySelector('#h-form');
+  const enlace = form.querySelector('[name="enlace"]').value.trim();
+  if (!enlace) throw new Error('Pega primero el enlace del video en su casilla.');
+  const { texto, titulo } = await conceptoDesdeEnlace(enlace, opciones);
+  const caja = form.querySelector('[name="concepto"]');
+  caja.value = texto;
+  // Lo traído queda también en el formulario guardado: si la pantalla se
+  // repinta, el concepto no se pierde.
+  const formulario = leerFormulario();
+  formulario.concepto = texto;
+  let p = proyectoActual();
+  if (!p) p = empezar({ version: 1, formulario });
+  p.datos.formulario = formulario;
+  await guardar();
+  avisar(`Concepto traído${titulo ? ` de «${titulo}»` : ''}. Revísalo en «Tu concepto» y genera las ideas cuando quieras.`, 'success');
+  caja.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 async function accionIdeas(opciones) {

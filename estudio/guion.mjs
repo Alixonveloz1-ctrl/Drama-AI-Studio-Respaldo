@@ -260,6 +260,17 @@ export function validarBloque(json, ctx) {
     const sistemaATiempo = universo.tieneSistema && lineaSistema && posicionEnPalabras(lineaSistema.texto) <= limite30;
     if (!sistemaATiempo && (!citaValida(a.citaElemento || '') || posicionEnPalabras(a.citaElemento) > limite30)) problemas.push(universo.tieneSistema ? 'el Sistema no aparece en los primeros 30 segundos (su primera línea tiene que llegar en las primeras ~70 palabras)' : 'el elemento especial no aparece en los primeros 30 segundos');
     if (ARRANQUE_AMBIENTAL.test(normalizar(escenas[0]?.accion || ''))) problemas.push('abre con ambientación en vez de entrar en el conflicto');
+    // GANCHO DESDE EL SEGUNDO 0 (regla del dueño): la voz entra con la
+    // primera imagen, y es la del protagonista contando ya su conflicto.
+    // Nada de abrir con acción muda ni con la línea de otro: en los
+    // dramas que funcionan, la historia ya va hablando en el primer
+    // segundo. Se admite que abra otro personaje SOLO si la segunda
+    // línea es ya el protagonista.
+    const prot = (universo.personajes || []).find(p => p.rol === 'protagonista');
+    const primeras = escenas.flatMap(e => e.lineas).filter(l => l.tipo === 'dialogo' || l.tipo === 'pensamiento');
+    if (prot && primeras.length && primeras[0].personaje !== prot.id && primeras[1]?.personaje !== prot.id) {
+      problemas.push('la apertura no entra con la voz del protagonista: la primera línea tiene que ser suya (o la segunda, si abre otro), contando ya su conflicto desde el segundo 0, sin acción muda delante');
+    }
   }
 
   // Estilo.

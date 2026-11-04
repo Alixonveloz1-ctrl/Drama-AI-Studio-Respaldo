@@ -33,6 +33,9 @@
     },
     "api/montaje.js": {
       "maxDuration": 30
+    },
+    "api/inspiracion.js": {
+      "maxDuration": 30
     }
   },
   "headers": [

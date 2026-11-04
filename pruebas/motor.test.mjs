@@ -757,6 +757,35 @@ test('guion: en una historia con Sistema, sus propias líneas prueban el subgén
   assert.deepEqual(problemas, []);
 });
 
+test('guion: la apertura entra con la voz del protagonista desde el segundo 0', () => {
+  // El bloque válido abre el antagonista y la segunda línea ya es el
+  // protagonista pensando: se acepta. Si el protagonista no aparece ni
+  // en las dos primeras líneas, se rechaza (apertura muda o ajena).
+  assert.deepEqual(G.validarBloque(bloqueValido(), ctx()).problemas, []);
+  const tarde = bloqueValido();
+  tarde.escenas[0].lineas[1] = { ...tarde.escenas[0].lineas[3] };
+  assert.ok(G.validarBloque(tarde, ctx()).problemas.some(p => p.includes('voz del protagonista')));
+});
+
+test('inspiración: la transcripción se trocea, se resume y se destila el concepto', async () => {
+  const INS = await import('../estudio/inspiracion.mjs');
+  const palabras = Array.from({ length: 10000 }, (_, i) => 'palabra' + i).join(' ');
+  assert.equal(INS.trocear(palabras).length, 3);
+  assert.equal(INS.elegirTrozos(INS.trocear(palabras, 500)).length, 8, 'se reparten como mucho 8 trozos');
+  respuestas = [
+    { cuerpo: { titulo: 'Video viral', transcripcion: 'Un cocinero abre un portal en su restaurante y conecta con una cocina de otra época. ' + palabras } },
+    texto('Resumen uno: la trama y el motor de este tramo.'),
+    texto('Resumen dos: la trama y el motor de este tramo.'),
+    texto('Resumen tres: la trama y el motor de este tramo.'),
+    texto({ premisa: 'Un cocinero de hoy abre sin querer un portal en su restaurante que conecta con una cocina de otra época: intercambia platos por objetos valiosos, se hace famoso en los dos mundos y crece hasta volverse rico, mientras cada mundo le pide más.', motor: ['La voz del protagonista entra en el primer segundo contando su problema', 'Cada intercambio termina en una ganancia visible', 'Un giro o recompensa cada pocos minutos'] }),
+  ];
+  const { texto: concepto, titulo } = await INS.conceptoDesdeEnlace('https://youtu.be/abcdefghijk', { aviso: () => {} });
+  assert.equal(titulo, 'Video viral');
+  assert.match(concepto, /portal en su restaurante/);
+  assert.match(concepto, /Motor de la historia/);
+  assert.equal(llamadas[0].url, '/api/inspiracion');
+});
+
 test('sesión: cada petición lleva el token vigente y un 401 fuerza uno nuevo y repite una vez', async () => {
   const red = await import('../estudio/red.mjs');
   const pedidos = [];

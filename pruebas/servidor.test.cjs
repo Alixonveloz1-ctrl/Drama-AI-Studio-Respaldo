@@ -651,6 +651,20 @@ test('imagen: estado de la escena, fuera de cuadro, cambio y mapa de la escena; 
   assert.equal(ficha.statusCode, 200);
 });
 
+test('youtube: id del enlace, pistas desde el html, elección en español y texto de json3', () => {
+  const yt = require('../api/_lib/youtube');
+  assert.equal(yt.idDeEnlace('https://youtu.be/abcdefghijk?si=x'), 'abcdefghijk');
+  assert.equal(yt.idDeEnlace('https://www.youtube.com/watch?v=abcdefghijk&t=3'), 'abcdefghijk');
+  assert.equal(yt.idDeEnlace('https://www.youtube.com/shorts/abcdefghijk'), 'abcdefghijk');
+  assert.equal(yt.idDeEnlace('https://example.com/watch?v=abcdefghijk'), '');
+  const html = 'xx "captionTracks":[{"baseUrl":"https://t/en","languageCode":"en"},{"baseUrl":"https://t/es-asr","languageCode":"es","kind":"asr"},{"baseUrl":"https://t/es","languageCode":"es"}] yy';
+  const pistas = yt.pistasDeHtml(html);
+  assert.equal(pistas.length, 3);
+  assert.equal(yt.elegirPista(pistas).baseUrl, 'https://t/es', 'español del autor antes que el automático y que el inglés');
+  assert.equal(yt.textoDeJson3({ events: [{ segs: [{ utf8: 'Hola ' }, { utf8: 'mundo' }] }, { segs: [{ utf8: 'otra línea' }] }, {}] }), 'Hola mundo otra línea');
+  assert.deepEqual(yt.pistasDeHtml('<html>sin pistas</html>'), []);
+});
+
 test('imagen: el encuadre declarado viaja como instrucción obligatoria y se repite al final', async () => {
   conCuentaDeServicio();
   const { llamadasVertex } = vertexImagen(conImagen);
