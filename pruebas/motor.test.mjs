@@ -497,8 +497,9 @@ test('video: el audio prohíbe también gritos y jadeos, y el negativo los lista
   assert.match(n, /see-through clothing/);
 });
 
-test('video: solo las tomas de diálogo llevan boca hablando, sin voz audible; pensamiento y Sistema, boca cerrada', () => {
+test('video: Veo dice el texto exacto de la toma en español (diálogo en pantalla; pensamiento y Sistema en off)', () => {
   const u = universoValido();
+  const datos = { universo: u };
   const escena = { lineas: [
     { tipo: 'dialogo', personaje: 'c1', texto: 'Te lo digo claro: no me voy.' },
     { tipo: 'pensamiento', personaje: 'c1', texto: 'Si me quedo, pierdo todo.' },
@@ -508,18 +509,31 @@ test('video: solo las tomas de diálogo llevan boca hablando, sin voz audible; p
   assert.equal(V.tipoDeAncla(escena, { ancla: 'Si me quedo' }), 'pensamiento');
   assert.equal(V.tipoDeAncla(escena, { ancla: 'Misión cumplida' }), 'sistema');
   assert.equal(V.tipoDeAncla(escena, { ancla: 'palabras que no están' }), '');
-  const habla = V.promptVideo({ movimiento: 'Lin Feng speaks.' }, u.escenarios[0], { hablar: true });
-  assert.match(habla, /SPEAKING PERFORMANCE/);
-  assert.match(habla, /NO audible speech/);
-  assert.ok(habla.endsWith(V.AUDIO), 'el audio sin voces sigue al final y manda');
-  assert.ok(!V.negativoVideo({ movimiento: '' }, u.escenarios[0], { hablar: true }).includes('talking'), 'en diálogo, «talking» no va en el negativo o la boca quedaría quieta');
-  assert.match(V.negativoVideo({ movimiento: '' }, u.escenarios[0], { hablar: true }), /screaming, shouting/, 'los sonidos vocales siguen prohibidos');
-  const piensa = V.promptVideo({ movimiento: 'Lin Feng thinks.' }, u.escenarios[0], { hablar: false });
-  assert.match(piensa, /NO SPEAKING PERFORMANCE/);
-  assert.ok(!piensa.includes('SPEAKING PERFORMANCE — CRITICAL'));
-  // Sin clasificar: actuación neutra de antes, sin bloque de boca.
+  // Diálogo: quien habla, qué dice (su pedazo exacto) y en qué idioma.
+  const vozD = V.vozDelPlano(datos, escena, { ancla: 'Te lo digo claro' });
+  assert.deepEqual(vozD, { tipo: 'dialogo', nombre: 'Lin Feng', texto: 'Te lo digo claro' });
+  const habla = V.promptVideo({ movimiento: 'Lin Feng speaks.' }, u.escenarios[0], { voz: vozD });
+  assert.match(habla, /SPOKEN DIALOGUE — CRITICAL: Lin Feng speaks ALOUD/);
+  assert.match(habla, /saying EXACTLY these words and nothing else: "Te lo digo claro"/);
+  assert.ok(habla.endsWith(V.AUDIO_HABLA), 'con voz, el audio es la voz en español más los efectos');
+  assert.ok(!V.negativoVideo({ movimiento: '' }, u.escenarios[0], { voz: vozD }).includes('talking,'), 'en diálogo no se prohíbe hablar');
+  assert.match(V.negativoVideo({ movimiento: '' }, u.escenarios[0], { voz: vozD }), /chinese speech/, 'el habla en otro idioma sí se prohíbe');
+  // Pensamiento: voz en off del protagonista, boca cerrada en pantalla.
+  const vozP = V.vozDelPlano(datos, escena, { ancla: 'Si me quedo' });
+  assert.equal(vozP.tipo, 'pensamiento');
+  const piensa = V.promptVideo({ movimiento: 'Lin Feng thinks.' }, u.escenarios[0], { voz: vozP });
+  assert.match(piensa, /VOICE-OVER NARRATION — CRITICAL/);
+  assert.match(piensa, /NO SPEAKING PERFORMANCE/, 'en pantalla nadie habla');
+  assert.match(V.negativoVideo({ movimiento: '' }, u.escenarios[0], { voz: vozP }), /talking, speech, dialogue/, 'en off, hablar en pantalla sí se prohíbe');
+  assert.ok(!V.negativoVideo({ movimiento: '' }, u.escenarios[0], { voz: vozP }).includes('voice-over'), 'pero la narración en off no se prohíbe');
+  // Sistema: voz sintética en off con su texto.
+  const vozS = V.vozDelPlano(datos, escena, { ancla: 'Misión cumplida' });
+  assert.deepEqual(vozS, { tipo: 'sistema', nombre: 'The System', texto: 'Misión cumplida' });
+  assert.match(V.promptVideo({ movimiento: 'A panel glows.' }, u.escenarios[0], { voz: vozS }), /SYSTEM VOICE-OVER — CRITICAL/);
+  // Sin línea localizada: sin voz, solo efectos, como siempre.
+  assert.equal(V.vozDelPlano(datos, escena, { ancla: 'palabras que no están' }), null);
   const neutro = V.promptVideo({ movimiento: 'Lin Feng stands.' }, u.escenarios[0]);
-  assert.ok(!neutro.includes('SPEAKING PERFORMANCE') && !neutro.includes('NO SPEAKING PERFORMANCE'));
+  assert.ok(neutro.endsWith(V.AUDIO) && !neutro.includes('SPOKEN DIALOGUE') && !neutro.includes('VOICE-OVER'));
 });
 
 test('lugares: el director escribe una ficha detallada en inglés de cada lugar y va completa en cada plano', async () => {

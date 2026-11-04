@@ -10,14 +10,19 @@
 //    En video el ángulo ya lo fija el primer fotograma; pedir «no mires a
 //    cámara, usa ángulos laterales» obligaba a mover la cámara y peleaba con
 //    «no muevas la cámara». De ahí venía la deriva a primer plano.
-//  · Audio nativo sin voces: Veo sincroniza los efectos con lo que él mismo
-//    anima. Si alguna vez cuela una voz, se regenera ese plano y ya.
-//  · Boca hablando sin voz (solo en tomas de diálogo): el personaje mueve
-//    la boca como si hablara, pero el AUDIO sigue siendo solo ambiente y
-//    efectos, sin diálogo ni ningún sonido vocal humano. Nunca se le pide
-//    diálogo audible a Veo: su audio viene mezclado en un solo canal y no
-//    se podría quitar la voz dejando los efectos limpios. En tomas de
-//    pensamiento o de Sistema, la boca NO se mueve hablando.
+//  · La voz de cada toma la dice el propio Veo, en español y con el texto
+//    exacto de esa toma (decisión del dueño del 2026-11-03, que sustituye
+//    a la boca muda): pedirle boca hablando SIN voz no funcionó — con la
+//    boca articulando, Veo inventaba el diálogo, y lo inventaba en chino.
+//    Dándole las palabras escritas en español ya no inventa: dice su
+//    pedazo de línea (el ancla), y la línea se completa corte a corte.
+//    El dueño monta a mano en CapCut: ahí puede quitar solo la voz del
+//    clip (conservando efectos) y poner la voz de Chirp del paquete, o
+//    quedarse la de Veo si le suena mejor. El montaje automático NO se
+//    toca: esto es solo la generación del video.
+//  · Pensamiento: voz en off del personaje, con la boca cerrada en
+//    pantalla. Sistema: voz sintética en off. Sin línea (ancla de acción
+//    pura): solo ambiente y efectos, como siempre.
 //  · Sin encadenado de fotogramas: ni el último fotograma del plano
 //    siguiente ni fotogramas sacados del MP4 (nota final de la especificación).
 // ════════════════════════════════════════════════════════════════
@@ -40,10 +45,14 @@ const CONSULTAS = 72;         // 12 minutos como mucho
 
 // ─── Bloques literales (sección 13.2) ───
 export const ACTUACION = 'PERFORMANCE — CRITICAL: the characters are acting inside the scene and stay in the story — never posing, never turning toward the lens, never making eye contact with the camera, never addressing the viewer. The angle on them is ALREADY set by the first frame; keep that relationship to them for the whole clip.';
-// Solo para tomas de diálogo: boca hablando, sin voz audible (el audio
-// lo fija el bloque AUDIO, que va al final y manda). En pensamiento o
-// Sistema, este bloque NO se añade: la boca se queda cerrada.
-export const HABLA_SIN_VOZ = 'SPEAKING PERFORMANCE — CRITICAL: the visible character IS speaking in this shot: their mouth moves naturally as if speaking, jaw and lips articulating words, with small head and hand gestures of speech. The mouth must be visibly moving throughout the spoken part, never closed or still. This is a SILENT speaking performance for the picture only: the soundtrack must still carry NO audible speech at all (see AUDIO).';
+// La voz de la toma: el texto exacto que Veo tiene que decir es el ancla
+// del plano (el pedazo de la línea que le corresponde), en español.
+export const bloqueVoz = voz => {
+  const texto = String(voz.texto || '').replace(/"/g, '').trim();
+  if (voz.tipo === 'dialogo') return `SPOKEN DIALOGUE — CRITICAL: ${voz.nombre} speaks ALOUD in this shot, in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". Only ${voz.nombre} speaks, the mouth articulates these exact words, and all speech is in Spanish only — never Chinese, never English.`;
+  if (voz.tipo === 'pensamiento') return `VOICE-OVER NARRATION — CRITICAL: nobody speaks on screen in this shot and every mouth stays closed, but the voice-over of ${voz.nombre} narrates in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". The voice-over is in Spanish only — never Chinese, never English.`;
+  return `SYSTEM VOICE-OVER — CRITICAL: nobody speaks on screen; a synthetic system voice announces in neutral Latin American Spanish, saying EXACTLY these words and nothing else: "${texto}". Spanish only — never Chinese, never English.`;
+};
 export const SIN_HABLA = 'NO SPEAKING PERFORMANCE: no character speaks aloud in this shot: mouths stay closed, the character reacts, listens or thinks, with no lip movement of speech.';
 
 // Clasifica el ancla de un plano según la línea de la escena que contiene
@@ -54,21 +63,42 @@ const normAncla = t => String(t || '').toLowerCase()
   .normalize('NFD').replace(/[̀-ͯ]/g, '')
   .replace(/[«»"“”'‘’¿?¡!.,;:…—–\-()[\]]/g, ' ')
   .replace(/\s+/g, ' ').trim();
-export function tipoDeAncla(escena, plano) {
+export function lineaDeAncla(escena, plano) {
   const ancla = normAncla(plano?.ancla);
-  if (!ancla) return '';
+  if (!ancla) return null;
   for (const l of escena?.lineas || []) {
-    if (normAncla(l.texto).includes(ancla)) return l.tipo || '';
+    if (normAncla(l.texto).includes(ancla)) return l;
   }
-  return '';
+  return null;
 }
-export const hablaEnPlano = (escena, plano) => tipoDeAncla(escena, plano) === 'dialogo';
+export function tipoDeAncla(escena, plano) {
+  return lineaDeAncla(escena, plano)?.tipo || '';
+}
+
+// La voz que pide este plano: la línea cuya ancla lo ancla, el nombre de
+// quien la dice y el texto exacto a decir (el ancla, su pedazo de línea).
+// Sin línea localizada no se pide voz: solo ambiente y efectos.
+export function vozDelPlano(datos, escena, plano) {
+  const linea = lineaDeAncla(escena, plano);
+  if (!linea || !['dialogo', 'pensamiento', 'sistema'].includes(linea.tipo)) return null;
+  const texto = String(plano?.ancla || '').trim();
+  if (!texto) return null;
+  const nombre = linea.tipo === 'sistema'
+    ? 'The System'
+    : (datos?.universo?.personajes || []).find(p => p.id === linea.personaje)?.nombre || linea.nombre || 'The character';
+  return { tipo: linea.tipo, nombre, texto };
+}
 export const ENCUADRE_BLOQUEADO = 'FRAMING — LOCKED: the first frame sets the camera position, the lens and the shot size for the ENTIRE clip. Hold that exact framing from first frame to last: same distance to the subject, same lens, same shot size, same headroom, same amount of the room visible. The camera sits on a locked tripod unless the SHOT MOTION line names a camera move — if it names none, there is no zoom, no push-in, no pull-back and no reframing at any point.';
 export const ESTILO = 'STYLE — ABSOLUTELY MANDATORY: preserve the exact rendering of the first frame, pixel for pixel in look. Do not restyle it, do not turn it into animation, illustration or a videogame cinematic while moving.';
 // El texto literal de la especificación y, detrás, una frase añadida: Veo
 // cumplía «sin habla» pero metía gritos, jadeos y risas (lo vio el dueño).
 // Toda voz humana, también un grito, la pone después la voz del personaje.
 export const AUDIO = 'AUDIO: NO voice dialogue, NO narration, NO singing, NO human speech of any kind. ONLY the diegetic sound of this shot: ambience of the location and the sound effects of the action actually visible in frame. NO human vocal sounds at all either: no screams, shouts, yells, gasps, grunts, groans, moans, sighs, laughter, crying, sobbing or heavy breathing — even if a character opens their mouth, the soundtrack carries only ambience and object sounds; every human voice is added later.';
+// Cuando la toma lleva voz (la dice Veo, con su texto exacto), el audio es
+// esa voz en español MÁS los efectos del plano — el dueño separa la voz en
+// CapCut si prefiere la de Chirp. Lo que sigue prohibido es cualquier otra
+// voz y cualquier otro idioma: ahí venía el chino inventado.
+export const AUDIO_HABLA = 'AUDIO: the spoken words written above, in Spanish, PLUS the diegetic sound of this shot: ambience of the location and the sound effects of the action actually visible in frame. NO other voices, NO extra words beyond the quoted text, NO speech in any other language, NO singing and NO added music.';
 
 // Del estudio de anime: Veo trata la lluvia como una capa de partículas de
 // pantalla completa y la extendía por todo el plano, también dentro de un
@@ -93,10 +123,14 @@ export function promptVideo(plano, escenario, opciones = {}) {
     : 'MOTION — CRITICAL: subtle cinematic movement only. Gentle breathing, small natural gestures (head tilt, eye blink, hand movement). Characters stay in position — NO jumping, NO teleporting, NO sudden changes. Smooth and natural, like a live-action drama series.';
   const lugar = escenario ? `SETTING — already built into the input image, do not redesign it: ${primeraFrase(escenario.description || escenario.descripcion || escenario.nombre)}.` : '';
   const clima = CLIMA + (escenario?.interior ? CLIMA_INTERIOR : '');
-  // habla: true solo en tomas de diálogo (lo decide videoPlano a partir
-  // de la línea que contiene el ancla). Si no se sabe, no se añade nada
-  // y queda la actuación neutra de antes.
-  const habla = opciones.hablar === true ? HABLA_SIN_VOZ : opciones.hablar === false ? SIN_HABLA : '';
+  // voz: la línea que esta toma dice, con su texto exacto (la decide
+  // videoPlano a partir del ancla). Diálogo: habla en pantalla.
+  // Pensamiento y Sistema: voz en off con la boca cerrada (SIN_HABLA lo
+  // refuerza). Sin voz localizada: actuación neutra, solo efectos.
+  const voz = opciones.voz || null;
+  const bloqueHabla = voz
+    ? (voz.tipo === 'dialogo' ? bloqueVoz(voz) : SIN_HABLA + ' ' + bloqueVoz(voz))
+    : '';
   return [
     ESTILO,
     motivo,
@@ -104,9 +138,9 @@ export function promptVideo(plano, escenario, opciones = {}) {
     lugar,
     clima,
     ACTUACION,
-    habla,
+    bloqueHabla,
     `SHOT MOTION: ${movimiento ? movimiento.replace(/\.$/, '') : 'the characters hold their positions with small natural movement'}.`,
-    AUDIO,
+    voz ? AUDIO_HABLA : AUDIO,
   ].filter(Boolean).join(' ');
 }
 
@@ -118,13 +152,16 @@ export function negativoVideo(plano, escenario, opciones = {}) {
     'text, letters, subtitles, captions, watermark, logo, timestamp, letterboxing, black bars, split screen',
     'character facing the camera, eye contact with the camera, posing for the camera',
     'anime, cartoon, illustration, cel shading, videogame cutscene',
-    // En tomas de diálogo, la boca DEBE moverse hablando, así que «talking,
-    // speech, dialogue» no van en el negativo: si fueran, Veo dejaría la
-    // boca quieta. El bloque AUDIO sigue prohibiendo la voz audible, y
-    // los sonidos vocales (gritos, risas…) siguen prohibidos siempre.
-    opciones.hablar === true
-      ? 'singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds'
-      : 'talking, speech, dialogue, voice-over, narration, singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds',
+    // La voz de la toma la dice Veo en español: en diálogo no se prohíbe
+    // hablar (la boca lo está diciendo); en voz en off no se prohíbe la
+    // narración, pero sí que alguien hable EN pantalla. En los tres casos
+    // se prohíbe el habla en otro idioma, que era el fallo (chino), y los
+    // sonidos vocales sueltos siguen prohibidos siempre.
+    opciones.voz?.tipo === 'dialogo'
+      ? 'singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds, chinese speech, english speech, foreign language dialogue'
+      : opciones.voz
+        ? 'talking, speech, dialogue, singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds, chinese speech, english speech, foreign language dialogue'
+        : 'talking, speech, dialogue, voice-over, narration, singing, screaming, shouting, yelling, gasping, grunting, groaning, moaning, sighing, laughing, crying, sobbing, heavy breathing, human vocal sounds',
     'see-through clothing, transparent wet shirt, sheer fabric showing skin underneath',
     'indoor rain, rain inside a room, rain inside a corridor, precipitation indoors, water falling indoors, wet indoor floor, puddles indoors, indoor snow',
   ];
@@ -149,14 +186,14 @@ export async function videoPlano({ proyectoId, datos, escena, plano, control, av
   const escenario = datos.universo.escenarios.find(x => x.id === escena.escenario);
   if (!plano.operacion?.nombre) {
     aviso?.('Enviando a Veo…');
-    // Solo las tomas de diálogo llevan boca hablando; las de pensamiento
-    // o Sistema llevan boca cerrada. Si el ancla no se sitúa en ninguna
-    // línea, no se fuerza ninguna de las dos (actuación neutra de antes).
-    const tipo = tipoDeAncla(escena, plano);
-    const hablar = tipo === 'dialogo' ? true : tipo === 'pensamiento' || tipo === 'sistema' ? false : undefined;
+    // La voz de la toma: si el ancla cae en una línea, Veo dice su texto
+    // exacto en español (en pantalla si es diálogo; en off si es
+    // pensamiento o Sistema). Si no cae en ninguna línea, el plano va
+    // sin voz, solo con sus efectos.
+    const voz = vozDelPlano(datos, escena, plano);
     const r = await pedirMedio('/api/video-inicio', {
       proyecto: proyectoId, clave: 'video-' + plano.id, imagen: plano.imagen.ruta,
-      prompt: promptVideo(plano, escenario, { hablar }), negativo: negativoVideo(plano, escenario, { hablar }),
+      prompt: promptVideo(plano, escenario, { voz }), negativo: negativoVideo(plano, escenario, { voz }),
       formato: datos.formulario.formato, modelo: modeloVideo(datos),
     }, { control, aviso });
     plano.operacion = { nombre: r.operacion, modelo: r.modelo, inicio: Date.now(), imagen: plano.imagen.ruta };
