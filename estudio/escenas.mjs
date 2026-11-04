@@ -207,7 +207,7 @@ async function imagenPlano(escena, indice, opciones) {
     ? textoSoloVisibles(plano.cambio || '', nombresVisibles, nombresPresentes)
     : (indice > 0 ? plano.cambio || '' : '');
   const cuerpo = {
-    proyecto: p.id, clave: 'plano-' + plano.id, prompt: plano.prompt, formato: d.formulario.formato, modelo: modeloImagen(d),
+    proyecto: p.id, clave: 'plano-' + plano.id, prompt: plano.prompt, formato: d.formulario.formato, modelo: modeloImagen(d), encuadre: plano.encuadre || undefined,
     personajes: personajes.map(x => ({ nombre: x.nombre, ruta: x.ruta })),
     continuidad: anterior?.imagen?.ruta || undefined,
     situacion: cerrado ? undefined : mapa,

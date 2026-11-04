@@ -66,7 +66,20 @@ const SIN_TRANSPARENCIAS = 'the fabric over the breasts is never see-through, sh
 // En ecchi esto NO es una regla de pudor (fallo visto: la regla anterior hacía
 // que el modelo abotonara blusas y alargara faldas, y se perdía el fan service).
 const CONTRAPESO_ECCHI = 'This is NOT a modesty rule and nothing else gets covered up: keep the low neckline, visible cleavage, open collar, form-fitting cut, short or high-slit skirt and bare legs exactly as alluring as the character is designed.';
-const cierre = ecchi => `FINAL CHECK before rendering: this is a live-action photograph of real actors (never an illustration, painting or render), and every character keeps the exact face and hair of their own reference image. ${SIN_TRANSPARENCIAS} ${ecchi ? CONTRAPESO_ECCHI : 'Figure, legs and neckline stay as described.'} No text anywhere in the image.`;
+// El encuadre declarado en el desglose llegaba solo dentro del texto del
+// plano y el modelo lo ignoraba: pedía primer plano y entregaba cuerpo
+// entero (9 de 15 planos mal encuadrados en la revisión del dueño). Ahora
+// viaja como instrucción obligatoria propia, con el recorte corporal
+// exacto de cada tipo, y se repite en la comprobación final.
+const ENCUADRE = {
+  general: 'WIDE SHOT: full bodies visible head to feet, with the whole place readable around them; nobody is cropped at the waist, chest or knees.',
+  medio: 'MEDIUM SHOT, waist up: every visible person is framed from the waist up only; NO legs, knees or feet in the frame, and do not pull back to a full-body shot.',
+  primer_plano: 'CLOSE-UP: head and shoulders only, the face fills most of the frame; NO body below the chest, no waist, no legs, and do not pull back to a medium or wide shot.',
+  detalle: 'INSERT, extreme close-up: only the hands or the single named object fill the frame; no full faces and no full bodies.',
+};
+const textoEncuadre = encuadre => ENCUADRE[encuadre] || '';
+
+const cierre = (ecchi, encuadre = '') => `FINAL CHECK before rendering: this is a live-action photograph of real actors (never an illustration, painting or render), and every character keeps the exact face and hair of their own reference image. ${SIN_TRANSPARENCIAS} ${ecchi ? CONTRAPESO_ECCHI : 'Figure, legs and neckline stay as described.'}${encuadre ? ` FRAMING CHECK (mandatory): ${encuadre}` : ''} No text anywhere in the image.`;
 
 
 function reglas(nombres, formato, ecchi, direccion, conEstado) {
@@ -198,7 +211,8 @@ module.exports = puerta({ metodos: ['POST'] }, async (req, { google }) => {
       fuera.length ? `PRESENT BUT OUT OF FRAME (still in the room; this framing leaves them out): ${fuera.join(', ')}.` : '',
       cambio ? `WHAT CHANGED SINCE THE PREVIOUS SHOT (show this new moment; do not repeat the previous frame's poses):\n${cambio}` : '',
     ].filter(Boolean).join('\n\n');
-    partes.push({ text: `${reglas(personajes.map(p => p.nombre), formato, b.ecchi === true, texto(b.direccion, 2500), Boolean(estado))}${escena ? '\n\n' + escena : ''}\n\nScene to show:\n${limpiarPrompt(prompt)}\n\n${cierre(b.ecchi === true)}` });
+    const encuadre = textoEncuadre(b.encuadre);
+    partes.push({ text: `${reglas(personajes.map(p => p.nombre), formato, b.ecchi === true, texto(b.direccion, 2500), Boolean(estado))}${escena ? '\n\n' + escena : ''}${encuadre ? `\n\nFRAMING (mandatory, it overrides any looser wording in the scene text): ${encuadre}` : ''}\n\nScene to show:\n${limpiarPrompt(prompt)}\n\n${cierre(b.ecchi === true, encuadre)}` });
   }
   const msLectura = Date.now() - inicio;
 

@@ -343,6 +343,22 @@ export async function desglosar(datos, numero, { control, aviso, guardar, soloEs
     }
     alAvanzar?.();
   };
+  // Una escena sola también puede pasarse de tiempo: su desglose pide el
+  // MÁXIMO de planos y cada plano trae estado, cambio y prompt largos, así
+  // que la respuesta no cabe en los 50 s del servidor y repetirla igual
+  // vuelve a fallar (fallo visto en una escena de 37 s). El reintento la
+  // pide MÁS PEQUEÑA, como promete el mensaje de error: el mínimo de
+  // planos y campos breves, que la validación sigue aceptando.
+  const extraBreve = escena => `\n\nIMPORTANTE, RESPUESTA BREVE OBLIGATORIA: escribe EXACTAMENTE ${minimoPlanos(escena)} planos para esta escena (el mínimo, no más). Cada "estado" en una sola frase corta de máximo 25 palabras, cada "cambio" de máximo 15 palabras y cada "prompt" de máximo 40 palabras. Sin adornos: la respuesta tiene que ser corta para caber en el tiempo del servidor.`;
+  const pedirUna = async escena => {
+    try {
+      return await pedirValidado(promptDesglose(datos, [escena]), j => validarDesglose(j, [escena], datos.universo), { control, aviso, etiqueta: `Desglose de la escena ${escena.id}` });
+    } catch (e) {
+      if (e.tipo !== 'tiempo') throw e;
+      aviso?.(`La escena ${escena.id} tardó demasiado; la pido más pequeña…`);
+      return await pedirValidado(promptDesglose(datos, [escena], extraBreve(escena)), j => validarDesglose(j, [escena], datos.universo), { control, aviso, etiqueta: `Desglose breve de la escena ${escena.id}` });
+    }
+  };
   for (const [g, grupo] of grupos.entries()) {
     const etiqueta = `Desglose de planos: escenas ${hechas + 1} a ${hechas + grupo.length} de ${pendientes.length}`;
     let resultado, presentes;
@@ -350,12 +366,17 @@ export async function desglosar(datos, numero, { control, aviso, guardar, soloEs
       ({ resultado, presentes } = await pedirValidado(promptDesglose(datos, grupo), j => validarDesglose(j, grupo, datos.universo), { control, aviso, etiqueta }));
     } catch (e) {
       // Si no cupo en el tiempo con varias escenas, se reintenta de una en una.
-      if (e.tipo !== 'tiempo' || grupo.length === 1) throw e;
-      resultado = {}; presentes = {};
-      for (const escena of grupo) {
-        const r = await pedirValidado(promptDesglose(datos, [escena]), j => validarDesglose(j, [escena], datos.universo), { control, aviso, etiqueta: `Desglose de la escena ${escena.id}` });
-        Object.assign(resultado, r.resultado);
-        Object.assign(presentes, r.presentes);
+      if (e.tipo !== 'tiempo') throw e;
+      if (grupo.length === 1) {
+        aviso?.('Tardó demasiado; la pido más pequeña…');
+        ({ resultado, presentes } = await pedirValidado(promptDesglose(datos, grupo, extraBreve(grupo[0])), j => validarDesglose(j, grupo, datos.universo), { control, aviso, etiqueta: `Desglose breve de la escena ${grupo[0].id}` }));
+      } else {
+        resultado = {}; presentes = {};
+        for (const escena of grupo) {
+          const r = await pedirUna(escena);
+          Object.assign(resultado, r.resultado);
+          Object.assign(presentes, r.presentes);
+        }
       }
     }
     for (const escena of grupo) {

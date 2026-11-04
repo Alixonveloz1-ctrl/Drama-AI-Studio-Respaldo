@@ -651,6 +651,25 @@ test('imagen: estado de la escena, fuera de cuadro, cambio y mapa de la escena; 
   assert.equal(ficha.statusCode, 200);
 });
 
+test('imagen: el encuadre declarado viaja como instrucción obligatoria y se repite al final', async () => {
+  conCuentaDeServicio();
+  const { llamadasVertex } = vertexImagen(conImagen);
+  const imagen = require('../api/imagen');
+  const salida = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'plano-e1-4', prompt: 'Scene with Lin Fan (topknot, grey linen): he looks up, worried.',
+    personajes: [{ nombre: 'Lin Fan', ruta: base + 'personaje-c1.png' }], encuadre: 'primer_plano' }), salida);
+  assert.equal(salida.statusCode, 200, JSON.stringify(salida.valor));
+  const ultimo = llamadasVertex[0].cuerpo.contents[0].parts.at(-1).text;
+  assert.match(ultimo, /FRAMING \(mandatory[^)]*\): CLOSE-UP: head and shoulders only/);
+  assert.match(ultimo, /FRAMING CHECK \(mandatory\): CLOSE-UP/);
+  assert.ok(ultimo.indexOf('FRAMING (mandatory') < ultimo.indexOf('Scene to show:'), 'el encuadre va antes de la escena');
+  // Sin encuadre (fichas y peticiones antiguas) no se inventa ninguno.
+  vertexImagen(conImagen);
+  const ficha = respuesta();
+  await imagen(imagenReq({ proyecto: 'pimagen0001', clave: 'personaje-c1', prompt: 'Single clean CHARACTER REFERENCE still of Lin Fan.' }), ficha);
+  assert.equal(ficha.statusCode, 200);
+});
+
 test('imagen: si Google tarda demasiado se corta con tiempo de sobra y lo dice; no se reintenta en el servidor', async () => {
   conCuentaDeServicio();
   const imagen = require('../api/imagen');

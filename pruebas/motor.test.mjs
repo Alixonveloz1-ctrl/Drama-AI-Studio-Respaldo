@@ -297,6 +297,21 @@ test('primer plano: el estado que se manda a la imagen habla solo del visible', 
   );
 });
 
+test('desglose: si una escena sola se pasa de tiempo, se reintenta pidiéndola más pequeña', async () => {
+  const u = universoValido();
+  u.escenarios.forEach(e => { e.ficha = e.ficha || 'Exterior. Stone courtyard, wooden gate on the left, well on the right, dawn light.'; });
+  const e = escenaDePrueba();
+  const datos = { formulario, universo: u, biblia: {}, episodios: { 1: { bloques: [{ escenas: [e] }] } } };
+  respuestas = [
+    { estado: 504, cuerpo: { error: 'Google tardó más de 50 s', tipo: 'tiempo' } },
+    texto(desgloseValido(e)),
+    texto({ revisadas: ['e1'], correcciones: [] }),
+  ];
+  await D.desglosar(datos, 1, { guardar: async () => {} });
+  assert.ok(e.planos?.length >= 1, 'la escena queda desglosada tras el reintento breve');
+  assert.match(llamadas[1].cuerpo.mensaje, /RESPUESTA BREVE OBLIGATORIA/, 'el segundo intento pide la respuesta más pequeña');
+});
+
 // ─── Videos ───
 import * as V from '../estudio/videos.mjs';
 
