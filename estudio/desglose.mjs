@@ -345,7 +345,7 @@ export async function desglosar(datos, numero, { control, aviso, guardar, soloEs
   };
   // Una escena sola también puede pasarse de tiempo: su desglose pide el
   // MÁXIMO de planos y cada plano trae estado, cambio y prompt largos, así
-  // que la respuesta no cabe en los 50 s del servidor y repetirla igual
+  // que la respuesta no cabe en el límite del servidor y repetirla igual
   // vuelve a fallar (fallo visto en una escena de 37 s). El reintento la
   // pide MÁS PEQUEÑA, como promete el mensaje de error: el mínimo de
   // planos y campos breves, que la validación sigue aceptando.

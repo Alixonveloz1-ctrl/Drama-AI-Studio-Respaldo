@@ -13,9 +13,14 @@
 //    pasara de los 60 s de Vercel y el navegador recibía una página de error
 //    que no era JSON. LOW razona de sobra para escribir.
 //  · Vercel corta a los 60 s con un 504 en texto plano que no se distingue de
-//    un corte de red. Aquí se para a los 50 s y se contesta en JSON que la
+//    un corte de red. Aquí se para a los 57 s y se contesta en JSON que la
 //    petición fue demasiado lenta: el navegador la hace más pequeña en vez
-//    de repetirla igual (repetirla igual vuelve a fallar).
+//    de repetirla igual (repetirla igual vuelve a fallar). Antes el corte
+//    era a los 50 s, pero en el texto no queda trabajo después de que
+//    Google contesta (a diferencia de la imagen o la voz, que aún guardan
+//    el archivo), y el dueño señaló que una respuesta que llegaba a los
+//    55 s se mataba sola teniendo permiso hasta los 60; 57 deja solo el
+//    margen de entregar la respuesta.
 //  · Sin cambio de modelo: si el elegido falla, se devuelve el error de Google.
 //  · Los cuatro filtros configurables, en OFF (el estudio puede escribir
 //    contenido adulto). Las protecciones no configurables de Google siguen
@@ -25,7 +30,7 @@ const puerta = require('./_lib/puerta');
 const { cfg, urlVertex } = require('./_lib/google');
 const { ErrorEstudio, errorDeGoogle } = require('./_lib/errores');
 
-const LIMITE_MS = 50000;
+const LIMITE_MS = 57000;
 const MAX_MENSAJE = 400000;   // caracteres; muy por debajo de los 4,5 MB de Vercel
 
 function extraerTexto(datos) {
