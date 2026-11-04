@@ -681,6 +681,12 @@ test('montaje: cada escena dura su narración, los planos sin ancla se reparten 
   assert.ok(zip.textos.some(t => t.nombre === 'subtitulos.srt' && /Hola\./.test(t.contenido)), 'el SRT va siempre en el paquete, para CapCut');
   assert.ok(!zip.archivos.some(a => a.nombre.startsWith('voces/')), 'las voces sueltas no van en el ZIP');
   assert.equal(zip.voces.length, 2, 'las voces van como lista para un solo audio mezclado');
+  // Diálogos sueltos por línea, con su corte dentro del tramo, para el
+  // recorte al ras del servidor.
+  assert.equal(zip.dialogos.length, 2);
+  assert.deepEqual(zip.dialogos[0], { ruta: 'r/v1.wav', desde: 0.1, hasta: 1.9, nombre: 'dialogos/dialogo-001.wav' });
+  assert.equal(zip.dialogos[1].nombre, 'dialogos/dialogo-002.wav');
+  assert.ok(zip.textos.some(t => t.nombre === 'guia.txt' && /Diálogo 001 — Lin Feng/.test(t.contenido) && /Diálogo 002 — Sistema/.test(t.contenido)), 'la guía lista los diálogos con su archivo');
 });
 
 test('montaje anclado: la frase siguiente entra sobre la reacción y su plano llega un poco después', () => {

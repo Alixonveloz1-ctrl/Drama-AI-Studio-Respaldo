@@ -232,14 +232,33 @@ export function hojaDeZip(datos, numero) {
   // con los del montaje.
   const guia = [];
   const vocesZip = [];
+  const dialogosZip = [];
+  const guiaDialogos = [];
   const subtitulosZip = [];
-  let toma = 0, tEscena = 0;
+  let toma = 0, tEscena = 0, numDialogo = 0;
   for (const [n, e] of escenas.entries()) {
     const tiempos = tiemposDeEscena(e, tEscena);
     const { durs, total: D } = duracionesDeEscena(e, tiempos);
     // Voces de esta escena, en orden, con su inicio y su duración: el
     // servidor las mezcla en un solo voces.wav, no una por archivo.
     for (const v of tiempos.voces) vocesZip.push({ ruta: v.ruta, inicio: Number(v.inicio.toFixed(3)), segundos: v.segundos });
+    // Y ADEMÁS, cada línea suelta y RECORTADA AL RAS (decisión del dueño:
+    // en CapCut perdía mucho tiempo cortando los silencios de cada línea
+    // a mano). Una entrada por línea hablada, en orden del episodio, con
+    // su tramo y su desde/hasta dentro de él: el servidor la recorta y
+    // le quita el silencio del principio y del final.
+    for (const tr of e.voz?.tramos || []) {
+      (tr.lineas || []).forEach((indice, k) => {
+        const linea = (e.lineas || [])[indice];
+        if (!linea) return;
+        const tt = tr.tiempos?.[k] || { inicio: (tr.segundos || 0) * k / tr.lineas.length, fin: (tr.segundos || 0) * (k + 1) / tr.lineas.length };
+        numDialogo++;
+        const nombre = `dialogos/dialogo-${tres(numDialogo)}.wav`;
+        const quien = linea.tipo === 'sistema' ? 'Sistema' : linea.personaje === 'extra' ? (linea.nombre || 'Extra') : nombreDe(u, linea.personaje);
+        dialogosZip.push({ ruta: tr.ruta, desde: Number(tt.inicio.toFixed(3)), hasta: Number(tt.fin.toFixed(3)), nombre });
+        guiaDialogos.push(`Diálogo ${tres(numDialogo)} — ${quien}${linea.tipo === 'pensamiento' ? ' (piensa)' : ''}: «${linea.texto}» — archivo ${nombre}`);
+      });
+    }
     subtitulosZip.push(...tiempos.subtitulos);
     let tToma = tEscena;
     for (const [i, p] of (e.planos || []).entries()) {
@@ -268,10 +287,10 @@ export function hojaDeZip(datos, numero) {
   const textos = [
     { nombre: 'guion.txt', contenido: guion },
     { nombre: 'direccion-creativa.txt', contenido: direccion },
-    { nombre: 'guia.txt', contenido: `GUÍA DEL EPISODIO ${numero} — cada toma, en orden, con su inicio y su duración.\nLas voces van en un solo audio (voces.wav) en este mismo orden, con sus pausas: para editar, ajusta solo las imágenes, no las voces.\n\n${guia.join('\n')}` },
+    { nombre: 'guia.txt', contenido: `GUÍA DEL EPISODIO ${numero} — cada toma, en orden, con su inicio y su duración.\nLas voces van en un solo audio (voces.wav) en este mismo orden, con sus pausas: para editar, ajusta solo las imágenes, no las voces.\nY cada línea va además suelta en la carpeta «dialogos», recortada al ras (sin silencio al principio ni al final), por si prefieres colocarlas una a una.\n\n${guia.join('\n')}${guiaDialogos.length ? `\n\nDIÁLOGOS SUELTOS, EN ORDEN:\n${guiaDialogos.join('\n')}` : ''}` },
     { nombre: 'subtitulos.srt', contenido: subtitulosZip.map((s, i) => `${i + 1}\n${tSrt(s.inicio)} --> ${tSrt(s.fin)}\n${s.texto}\n`).join('\n') },
   ];
-  return { modo: 'zip', episodio: numero, archivos, textos, voces: vocesZip };
+  return { modo: 'zip', episodio: numero, archivos, textos, voces: vocesZip, dialogos: dialogosZip };
 }
 
 async function dormir(segundos, control) {

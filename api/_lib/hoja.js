@@ -92,8 +92,18 @@ function validar(id, h) {
       inicio: num(v?.inicio, 0, 4 * 3600, `el inicio de la voz ${i + 1}`),
       segundos: num(v?.segundos, 0, 3600, `la duración de la voz ${i + 1}`),
     }));
+    // Diálogos sueltos recortados al ras: cada línea, con su tramo y su
+    // desde/hasta dentro de él (hojas antiguas no los traen: opcionales).
+    const dialogos = lista(h.dialogos, 4000, 'los diálogos').map((d, i) => {
+      const nombre = String(d?.nombre || '');
+      if (!/^[a-z0-9][a-z0-9/_.-]{1,140}$/.test(nombre) || nombre.includes('..')) throw new ErrorEstudio('Un nombre de diálogo del ZIP no es válido.', { estado: 400, tipo: 'peticion' });
+      const desde = num(d?.desde, 0, 3600, `el inicio del diálogo ${i + 1}`);
+      const hasta = num(d?.hasta, 0, 3600, `el fin del diálogo ${i + 1}`);
+      if (hasta <= desde) throw new ErrorEstudio(`El diálogo ${i + 1} del ZIP no tiene duración.`, { estado: 400, tipo: 'peticion' });
+      return { ruta: medios.exigirDelProyecto(id, d?.ruta), desde, hasta, nombre };
+    });
     if (!archivos.length && !textos.length) throw new ErrorEstudio('No hay nada que meter en el ZIP.', { estado: 400, tipo: 'peticion' });
-    return { modo, episodio, archivos, textos, voces };
+    return { modo, episodio, archivos, textos, voces, dialogos };
   }
   const planos = lista(h.planos, 3000, 'los planos').map((p, i) => ({
     tipo: p?.tipo === 'video' ? 'video' : 'imagen',
@@ -131,10 +141,23 @@ function construir(h, { bucket, carpeta }) {
     for (const [i, v] of voces.entries()) descargas.push([gs(v.ruta), `a/v${pad(i + 1, 4)}.wav`]);
     const vocesFiltro = voces.map((v, i) => `[${i}:a]loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,aformat=channel_layouts=stereo,adelay=${Math.round(v.inicio * 1000)}:all=1[v${i}]`).join(';');
     const vocesEntradas = voces.map((_, i) => `-i a/v${pad(i + 1, 4)}.wav`).join(' ');
+    // Diálogos sueltos: se cortan de su tramo (ya descargado como voz) y
+    // se les quita el silencio del principio y del final (recorte al ras:
+    // silenceremove al derecho y al revés), con la misma normalización
+    // que el audio único, y van a material/dialogos/ dentro del ZIP.
+    const indiceVoz = new Map(voces.map((v, i) => [v.ruta, i]));
+    const lineasDialogos = (h.dialogos || []).map(d => {
+      const i = indiceVoz.get(d.ruta);
+      if (i === undefined) return '';
+      const filtro = `atrim=start=${f3(d.desde)}:end=${f3(d.hasta)},asetpts=N/SR/TB,loudnorm=I=-16:TP=-1.5:LRA=11,silenceremove=start_periods=1:start_duration=0.05:start_threshold=-50dB,areverse,silenceremove=start_periods=1:start_duration=0.05:start_threshold=-50dB,areverse`;
+      return `ffmpeg -nostdin -y -i a/v${pad(i + 1, 4)}.wav -af "${filtro}" -ar 48000 -ac 2 "material/${d.nombre}"`;
+    }).filter(Boolean);
     const archivo = `material-ep${pad(h.episodio, 2)}.zip`;
     const script = `#!/usr/bin/env bash
 set -Eeuo pipefail
 ${voces.length ? `ffmpeg -nostdin -y ${vocesEntradas} -filter_complex "${vocesFiltro};${voces.map((_, i) => `[v${i}]`).join('')}amix=inputs=${voces.length}:normalize=0:dropout_transition=0,apad,atrim=0:${f3(totalVoces)}[o]" -map "[o]" -ar 48000 -ac 2 material/voces.wav
+` : ''}${lineasDialogos.length ? `mkdir -p material/dialogos
+${lineasDialogos.join('\n')}
 ` : ''}cd material
 zip -r -0 -q "../${archivo}" .
 `;

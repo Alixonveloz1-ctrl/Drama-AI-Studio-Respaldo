@@ -873,6 +873,17 @@ test('hoja de montaje: el guion lo escribe el servidor, es bash válido y ningú
   assert.ok(!zipVocesHecho.descargas.some(([, d]) => d.startsWith('material/voces/')), 'ningún tramo suelto entra en el ZIP');
   assert.match(zipVocesHecho.script, /material\/voces\.wav/, 'se mezcla un solo voces.wav');
   assert.match(zipVocesHecho.script, /amix=inputs=2/, 'la mezcla usa los dos tramos');
+  // ZIP con diálogos sueltos: se cortan de su tramo y se recortan al ras.
+  const zipDialogos = hojaLib.validar('pimagen0001', { modo: 'zip', episodio: 2,
+    archivos: [{ ruta: base + 'plano-e1-2.png', nombre: 'imagenes/toma-001.png' }],
+    textos: [{ nombre: 'guion.txt', contenido: 'x' }],
+    voces: [{ ruta: base + 'voz-e1-1.wav', inicio: 0.35, segundos: 2 }],
+    dialogos: [{ ruta: base + 'voz-e1-1.wav', desde: 0.1, hasta: 1.9, nombre: 'dialogos/dialogo-001.wav' }] });
+  const zipDialogosHecho = hojaLib.construir(zipDialogos, { bucket: 'b', carpeta: 'c' });
+  assert.match(zipDialogosHecho.script, /atrim=start=0\.100:end=1\.900/, 'el diálogo se corta de su tramo');
+  assert.match(zipDialogosHecho.script, /silenceremove=start_periods=1[^"]*areverse/, 'y se recorta al ras por los dos lados');
+  assert.match(zipDialogosHecho.script, /material\/dialogos\/dialogo-001\.wav/, 'sale como archivo suelto en la carpeta de diálogos');
+  assert.throws(() => hojaLib.validar('pimagen0001', { modo: 'zip', episodio: 1, archivos: [{ ruta: base + 'a.png', nombre: 'imagenes/toma-001.png' }], textos: [], dialogos: [{ ruta: base + 'voz.wav', desde: 2, hasta: 1, nombre: 'dialogos/dialogo-001.wav' }] }), 'un diálogo sin duración se rechaza');
   const rutaZip = path.join(require('node:os').tmpdir(), 'montar-zip-prueba.sh');
   fs.writeFileSync(rutaZip, zipVocesHecho.script);
   assert.equal(require('node:child_process').spawnSync('bash', ['-n', rutaZip]).status, 0, 'el guion del ZIP es un shell válido');
