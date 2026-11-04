@@ -67,7 +67,11 @@ export function descripcionVoz(p) {
       : (mujer ? 'soft, clear and natural' : 'steady, clear and natural');
   return `${mujer ? "a woman's voice" : "a man's voice"}, ${decada}, ${tono}, neutral Latin American Spanish accent, natural pace, clear diction`;
 }
-export const VOZ_SISTEMA = 'a synthetic, slightly robotic system voice, flat, even and emotionless, neutral Latin American Spanish accent, measured pace';
+// El sexo de la voz del Sistema va ESCRITO y fijo (decisión del dueño:
+// mujer): la primera versión decía solo «voz sintética», sin sexo, y Veo
+// sorteaba en cada clip entre anunciador y anunciadora; regenerar no lo
+// arreglaba porque la descripción seguía ambigua.
+export const VOZ_SISTEMA = "a WOMAN's synthetic system voice — always a female voice, never a male voice — youthful, clear and slightly robotic, flat, even and emotionless, neutral Latin American Spanish accent, measured pace";
 
 // La voz de la toma: el texto exacto que Veo tiene que decir es el ancla
 // del plano (el pedazo de la línea que le corresponde), en español.
@@ -189,6 +193,7 @@ export function negativoVideo(plano, escenario, opciones = {}) {
     'see-through clothing, transparent wet shirt, sheer fabric showing skin underneath',
     'indoor rain, rain inside a room, rain inside a corridor, precipitation indoors, water falling indoors, wet indoor floor, puddles indoors, indoor snow',
   ];
+  if (opciones.voz?.tipo === 'sistema') partes.push('male system voice, male announcer voice, a man speaking, male voice-over');
   if (escenario?.interior) partes.push('rain streaks across the frame, rain in the foreground, weather particles over the characters, raindrops on the lens, indoor mist, indoor fog, wind blowing indoors, wet hair, wet clothing, water dripping from the ceiling');
   if (!CAMARA_ESCRITA.test(plano.movimiento || '')) partes.push('zoom in, zoom out, dolly in, push in, camera pull back, focal length change, shot size change, reframing, whip pan, orbiting camera, handheld shake');
   partes.push('cut to another shot, scene change, new character entering the frame, jump cut');

@@ -539,6 +539,9 @@ test('video: Veo dice el texto exacto de la toma en español (diálogo en pantal
   assert.equal(vozS.nombre, 'The System');
   assert.equal(vozS.texto, 'Misión cumplida');
   assert.equal(vozS.descripcion, V.VOZ_SISTEMA, 'el Sistema también tiene una sola voz fija');
+  assert.match(V.VOZ_SISTEMA, /WOMAN's synthetic system voice/, 'el sexo de la voz del Sistema va escrito: sin él, Veo lo sorteaba en cada clip');
+  assert.match(V.VOZ_SISTEMA, /never a male voice/);
+  assert.match(V.negativoVideo({ movimiento: '' }, u.escenarios[0], { voz: vozS }), /male system voice/, 'la voz de hombre se prohíbe en los planos del Sistema');
   assert.match(V.promptVideo({ movimiento: 'A panel glows.' }, u.escenarios[0], { voz: vozS }), /SYSTEM VOICE-OVER — CRITICAL/);
   // Sin línea localizada: sin voz, solo efectos, como siempre.
   assert.equal(V.vozDelPlano(datos, escena, { ancla: 'palabras que no están' }), null);
