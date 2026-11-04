@@ -269,9 +269,13 @@ export function validarBloque(json, ctx) {
   if ((normalizar(texto).match(INDIRECTO) || []).length > Math.max(1, Math.floor(palabras / 400))) problemas.push('demasiado diálogo contado en estilo indirecto: debe oírse la conversación');
   const largos = frases(texto).map(contarPalabras);
   if (largos.length) {
+    // Ritmo de los dramas de referencia: las líneas se dicen de un tirón,
+    // encadenadas con comas, así que una «frase» entre puntos es en la
+    // práctica una línea entera de 12 a 22 palabras. Solo se rechaza lo
+    // que ya suena a párrafo leído, no la línea rápida y continua.
     const media = largos.reduce((a, b) => a + b, 0) / largos.length;
-    if (media > 14) problemas.push(`frases demasiado largas (media ${media.toFixed(1)} palabras; el formato usa 5 a 10)`);
-    if (largos.filter(n => n > 30).length / largos.length > 0.08) problemas.push('demasiadas frases de más de 30 palabras');
+    if (media > 22) problemas.push(`frases demasiado largas (media ${media.toFixed(1)} palabras; el formato usa líneas de un tirón de 12 a 22)`);
+    if (largos.filter(n => n > 40).length / largos.length > 0.15) problemas.push('demasiadas frases de más de 40 palabras');
   }
 
   return {

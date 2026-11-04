@@ -641,7 +641,7 @@ test('montaje: cada escena dura su narración, los planos sin ancla se reparten 
   assert.equal(zip.voces.length, 2, 'las voces van como lista para un solo audio mezclado');
 });
 
-test('montaje anclado: el cambio de plano llega cuando empieza la frase siguiente', () => {
+test('montaje anclado: la frase siguiente entra sobre la reacción y su plano llega un poco después', () => {
   const u = universoValido();
   const datos = { formulario, universo: u, episodios: { 1: { estado: 'completo', musica: {}, bloques: [{ escenas: [
     { id: 'e1', titulo: 'La deuda', lineas: [{ tipo: 'dialogo', personaje: 'c1', texto: 'Primera frase corta aquí.' }, { tipo: 'dialogo', personaje: 'c2', texto: 'Segunda frase corta aquí.' }],
@@ -652,14 +652,16 @@ test('montaje anclado: el cambio de plano llega cuando empieza la frase siguient
       ] },
   ] }] } } };
   const h = MO.hojaDeVideo(datos, 1);
-  // Frase 1: de ENTRADA (0.35) a 2.35; frase 2: de 2.35 a 4.35. El primer
-  // plano dura hasta que empieza la segunda frase (2.35 s desde el inicio
-  // de la escena, menos la entrada ya dentro del primer plano: 2.35), y
-  // el segundo cubre hasta el final de la escena (4.35 + cola 0.5 = 4.85,
-  // menos 2.35 = 2.5).
-  assert.ok(Math.abs(h.planos[0].duracion - 2.35) < 0.01, `el primer plano dura hasta la segunda frase, salió ${h.planos[0].duracion}`);
-  assert.ok(Math.abs(h.planos[1].duracion - 2.5) < 0.01, `el segundo plano cubre hasta el final, salió ${h.planos[1].duracion}`);
+  // Frase 1 empieza tras la entrada y dura 2 s; la frase 2 empieza cuando
+  // termina la 1, pero su plano llega ADEL_VOZ después (la voz entra sobre
+  // la reacción del plano 1). El primer plano dura hasta ese inicio
+  // retrasado y el segundo cubre hasta el final de la escena.
+  const inicioPlano2 = MO.ENTRADA + 2 + MO.ADEL_VOZ;
+  assert.ok(Math.abs(h.planos[0].duracion - inicioPlano2) < 0.01, `el primer plano dura hasta que llega el segundo, salió ${h.planos[0].duracion}`);
+  assert.ok(Math.abs(h.planos[1].duracion - (MO.ENTRADA + 4 + MO.COLA - inicioPlano2)) < 0.01, `el segundo plano cubre hasta el final, salió ${h.planos[1].duracion}`);
   assert.ok(Math.abs(h.planos.reduce((n, p) => n + p.duracion, 0) - (MO.ENTRADA + 4 + MO.COLA)) < 0.01);
+  // Los huecos del montaje son la respiración mínima, no pausas muertas.
+  assert.ok(MO.ENTRADA <= 0.2 && MO.PAUSA <= 0.1 && MO.COLA <= 0.2, 'entrada, pausa y cola cortas');
 });
 
 test('episodios encadenados: el episodio 2 conoce lo que pasó y sus escenas tienen ids propios (no hereda medios)', async () => {

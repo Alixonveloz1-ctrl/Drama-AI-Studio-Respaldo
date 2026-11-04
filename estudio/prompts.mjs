@@ -110,13 +110,14 @@ export const ANATOMIA_FORMATO = `ANATOMÍA DEL FORMATO (drama corto que se mira 
    d) Gana algo visible: dinero, respeto, un aliado, puntos, una tecnología.
    Cadencia: un ciclo cada 45 a 90 segundos.
 3. El pensamiento interno del protagonista va ANTES de ejecutar la jugada, no después: el espectador sabe lo que va a pasar y se queda a ver la cara de los demás.
-4. VOCES: el protagonista narra casi todo en primera persona (esto se actúa, no se resume): lo que ve, lo que necesita, lo que planea y lo que piensa, siempre pegado a la acción que se ve en ese momento. Los demás personajes hablan solo cuando él interactúa con ellos, cada uno con su propia voz. NO EXISTE narrador que cuente la historia; la única voz en off permitida es la del Sistema, y solo si la historia tiene Sistema, con su función propia y separada del pensamiento del protagonista.`;
+4. VOCES: el protagonista narra casi todo en primera persona (esto se actúa, no se resume): lo que ve, lo que necesita, lo que planea y lo que piensa, siempre pegado a la acción que se ve en ese momento. Los demás personajes hablan solo cuando él interactúa con ellos, cada uno con su propia voz. NO EXISTE narrador que cuente la historia; la única voz en off permitida es la del Sistema, y solo si la historia tiene Sistema, con su función propia y separada del pensamiento del protagonista.
+5. RITMO (medido en los dramas que funcionan): la historia avanza sin parar. En cada minuto pasan 2 o 3 cosas pequeñas (una orden, una negociación, una reacción, un objeto que cambia de manos, una amenaza) y cada 60 a 120 segundos llega una recompensa o un giro visible. Ninguna escena termina en calma: termina con un problema nuevo, una amenaza o el próximo paso ya en marcha. Ninguna acción se cuenta entera paso a paso: se muestran dos o tres pasos cortos y se salta al resultado. Cada línea se escribe para decirse DE UN TIRÓN, con las comas mínimas y un solo punto cuando termina la idea: nada de partir una frase en dos líneas cortas si puede ir junta, porque cada punto es una pausa y las pausas largas hacen que la voz parezca lenta.`;
 
 export const REGLAS_ESCRITURA = `REGLAS DE ESCRITURA (cada una corrige un fallo real):
 - Prohibido el resumen escolar: nada de «durante los días siguientes entrenó y mejoró mucho». Si un crecimiento importa, se muestran dos o tres hechos concretos que lo prueben.
 - Cada solución produce una consecuencia o una necesidad nueva. Un problema resuelto que no cambia nada es un ciclo desperdiciado.
 - Las revelaciones reciben reacción antes de cambiar de asunto.
-- Español oral: frases cortas, diálogo directo, punto de vista cercano, microcambios frecuentes. La frase típica tiene de 5 a 10 palabras.
+- Español oral y rápido: diálogo directo, punto de vista cercano, microcambios frecuentes. Cada línea se dice de un tirón: únelas con comas y deja el punto solo para cerrar la idea; la línea típica tiene de 12 a 22 palabras encadenadas, no dos líneas cortas donde cabe una.
 - Prohibida la prosa literaria y el texto que suena a IA («el aire estaba cargado», «sus ojos reflejaban», «silencio ensordecedor», «una mezcla de emociones», «como si el tiempo se hubiera detenido»…).
 - Nada de diálogo resumido en estilo indirecto («le dijo que…», «explicó que…»): se oye la conversación.`;
 
@@ -449,6 +450,7 @@ ${pieza.parte ? `Este es un TROZO (${pieza.parte}) de esa fase: escribe solo esa
 - Al menos ${pieza.ciclos} ciclo(s) de retención COMPLETOS (problema → solución → reacción de los demás → recompensa visible).
 - Escenas de ${pieza.palabras <= 90 ? '25 a 80' : '40 a 150'} palabras cada una. Ninguna escena vacía ni de relleno.
 - NARRACIÓN DEL PROTAGONISTA (obligatoria): al menos la mitad de las palabras habladas son del protagonista (${protagonista.id} = ${protagonista.nombre}), entre su diálogo y su pensamiento en primera persona, siempre pegadas a la acción que se ve. Los demás personajes hablan solo cuando él interactúa con ellos.
+- RITMO (obligatorio): cada línea se dice de un tirón, con las comas mínimas y un solo punto al cerrar la idea; no partas en dos líneas cortas lo que cabe en una. En cada escena pasan 2 o 3 cosas pequeñas, ninguna acción se cuenta entera paso a paso (dos o tres pasos y al resultado), y la escena NO termina en calma: termina con un problema, una amenaza o el siguiente paso ya en marcha.
 - El pensamiento («pensamiento») es SOLO del protagonista (${protagonista.id} = ${protagonista.nombre}) y va antes de su jugada.${u.tieneSistema ? '\n- Las líneas del Sistema llevan "tipo":"sistema" y "personaje":null. Son paneles o notificaciones breves, con función propia y separada del pensamiento del protagonista.' : ''}
 - "accion" describe lo que SE VE al empezar la escena (personas, gesto, lugar) en 1 o 2 frases concretas; no se lee en voz alta.
 - Los personajes del reparto se nombran con su id. Un extra sin ficha (un soldado, un mercader) lleva "personaje":"extra" y su "nombre".

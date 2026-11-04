@@ -24,7 +24,14 @@ import { actosDelEpisodio, musicaVigente } from './musica.mjs';
 import { frasesDeLinea } from './subtitulos.mjs';
 import { vozVigente } from './voces.mjs';
 
-export const ENTRADA = 0.35, PAUSA = 0.25, COLA = 0.5;
+// Huecos del montaje, medidos contra los dramas de referencia del dueño:
+// allí el silencio entre líneas es menor de 1 s y solo se frena para el
+// premio. Entrada corta, pausa mínima entre tramos y cola breve: lo que
+// antes sumaba más de un segundo muerto por escena ahora es respiración.
+// ADEL_VOZ: la frase siguiente empieza sobre el plano de reacción anterior
+// y su plano llega ADEL_VOZ segundos después (J-cut), como en esos dramas,
+// en vez de esperar clavada a que cambie la imagen.
+export const ENTRADA = 0.15, PAUSA = 0.08, COLA = 0.15, ADEL_VOZ = 0.25;
 export const MINIMO_PLANO = 0.5;
 
 // Reparte D segundos entre los planos según su peso, sin bajar de un mínimo
@@ -99,13 +106,15 @@ export function tiemposDeEscena(e, t0) {
   return { voces, subtitulos, lineas, inicio: t0, duracion: duracionEscena(e) };
 }
 
-// Duraciones ancladas a la frase: el cambio de plano i+1 llega cuando
-// empieza la frase del plano i+1. Devuelve null si ningún plano de la
-// escena tiene un ancla que se pueda situar en una línea hablada; en ese
-// caso el llamador usa el reparto por peso de antes.
+// Duraciones ancladas a la frase: el cambio de plano i+1 llega ADEL_VOZ
+// segundos DESPUÉS de que empiece la frase del plano i+1, así la voz entra
+// sobre el plano de reacción anterior (J-cut) en vez de esperar al corte.
+// Devuelve null si ningún plano de la escena tiene un ancla que se pueda
+// situar en una línea hablada; en ese caso el llamador usa el reparto por
+// peso de antes.
 // La primera toma tiene una entrada de ENTRADA segundos antes de su frase
 // (es el arranque de la escena, no un hueco): lo que se ancla de verdad es
-// cada CAMBIO de plano con el inicio de la frase siguiente.
+// cada CAMBIO de plano con el inicio de la frase siguiente más el adelanto.
 export function duracionesAncladas(e, tiempos) {
   const planos = e.planos || [];
   if (!planos.length) return null;
@@ -135,15 +144,19 @@ export function duracionesAncladas(e, tiempos) {
     const k = lineaDe.slice(0, i + 1).filter(x => x === idx).length - 1;
     const lin = tiempos.lineas[idx];
     if (!lin) return inicioPeso[i];
-    return lin.inicio + k * (lin.fin - lin.inicio) / misma;
+    // El primer plano que abre una línea nueva llega ADEL_VOZ después de
+    // que la frase empiece: la voz va sobre la reacción anterior. Los
+    // planos que comparten la misma línea se siguen repartiendo su tiempo.
+    const adelanto = (i > 0 && k === 0) ? ADEL_VOZ : 0;
+    return lin.inicio + adelanto + k * (lin.fin - lin.inicio) / misma;
   });
   // Monótono: un plano nunca puede empezar antes que el anterior.
   for (let i = 1; i < inicios.length; i++) inicios[i] = Math.max(inicios[i], inicios[i - 1]);
   // Duración: del inicio EN VIDEO de cada plano al inicio del siguiente.
   // El primer plano empieza en el inicio de la escena (t0), no en su
-  // frase (que llega tras la entrada de 0.35 s); los siguientes empiezan
-  // justo cuando empieza su frase. Así el cambio de plano i+1 coincide
-  // con la frase i+1 y la suma sigue siendo la duración de la escena.
+  // frase (que llega tras la entrada); los siguientes empiezan ADEL_VOZ
+  // después de que empiece su frase, para que la voz entre sobre la
+  // reacción anterior. La suma sigue siendo la duración de la escena.
   const durs = inicios.map((s, i) => {
     const empiezaVideo = i === 0 ? t0 : s;
     const termina = i + 1 < inicios.length ? inicios[i + 1] : t0 + D;
