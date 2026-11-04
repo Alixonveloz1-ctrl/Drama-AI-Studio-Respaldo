@@ -20,7 +20,7 @@
 // ════════════════════════════════════════════════════════════════
 import { proyectoActual, guardar } from './proyectos.mjs';
 import { pedirMedio, tanda, resumenTanda, cargarImagenes, recordarUrl } from './medios.mjs';
-import { desglosar, revisar, escenasDelEpisodio, textoEscena, NOMBRE_ENCUADRE, nombreDe } from './desglose.mjs';
+import { desglosar, revisar, escenasDelEpisodio, textoEscena, NOMBRE_ENCUADRE, nombreDe, textoSoloVisibles } from './desglose.mjs';
 import { modeloImagen, MODELOS_IMAGEN } from './personajes.mjs';
 import { videoPlano, modeloVideo, MODELOS_VIDEO } from './videos.mjs';
 import { vozEscena, segundosVoz, vozVigente } from './voces.mjs';
@@ -193,13 +193,26 @@ async function imagenPlano(escena, indice, opciones) {
   // El primer plano (general) es el mapa de la escena para los siguientes.
   const mapa = indice > 0 && escena.planos[0]?.encuadre === 'general' && !escena.planos[0].imagenObsoleta ? escena.planos[0].imagen?.ruta : undefined;
   const fuera = (plano.presentes || []).filter(id => !plano.personajes.includes(id)).map(id => nombreDe(u, id));
+  // Encuadre cerrado: solo el personaje visible, sin el mapa general como
+  // composición a copiar y sin el estado de los demás presentes. Un rostro
+  // no puede mostrar a la vez toda la escena, y pedirlo atasca a Google
+  // hasta el límite de tiempo (fallo visto en un primer plano de cobertura).
+  const cerrado = plano.encuadre === 'primer_plano' || plano.encuadre === 'detalle';
+  const nombresVisibles = personajes.map(x => x.nombre);
+  const nombresPresentes = (plano.presentes || []).map(id => nombreDe(u, id));
+  const estado = cerrado
+    ? textoSoloVisibles(plano.estado || '', nombresVisibles, nombresPresentes)
+    : (plano.estado || '');
+  const cambio = cerrado
+    ? textoSoloVisibles(plano.cambio || '', nombresVisibles, nombresPresentes)
+    : (indice > 0 ? plano.cambio || '' : '');
   const cuerpo = {
     proyecto: p.id, clave: 'plano-' + plano.id, prompt: plano.prompt, formato: d.formulario.formato, modelo: modeloImagen(d),
     personajes: personajes.map(x => ({ nombre: x.nombre, ruta: x.ruta })),
     continuidad: anterior?.imagen?.ruta || undefined,
-    situacion: mapa,
-    estado: plano.estado || undefined,
-    cambio: indice > 0 ? plano.cambio || undefined : undefined,
+    situacion: cerrado ? undefined : mapa,
+    estado: estado || undefined,
+    cambio: cambio || undefined,
     fuera,
     lugar: textoDelLugar(u.escenarios.find(x => x.id === escena.escenario)),
     ecchi: esEcchi(d.formulario),

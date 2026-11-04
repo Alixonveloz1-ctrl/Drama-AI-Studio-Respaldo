@@ -58,6 +58,28 @@ export function maximoPlanos(escena) {
 export const ENCUADRES = ['general', 'medio', 'primer_plano', 'detalle'];
 export const NOMBRE_ENCUADRE = { general: 'General', medio: 'Medio', primer_plano: 'Primer plano', detalle: 'Detalle' };
 
+// Para un encuadre cerrado (primer plano o detalle), el estado que se manda
+// a la imagen debe hablar solo del personaje visible: si describe con detalle
+// lo que hacen los demás presentes, Google intenta meterlos a todos en un
+// rostro y se atasca hasta el límite de tiempo. Las frases que mencionan a
+// alguien fuera de cuadro se quitan (ese alguien queda solo en la lista de
+// «fuera de cuadro»); las que no mencionan a ningún visible también se
+// quitan, porque suelen describir objetos o acciones fuera del encuadre.
+export function textoSoloVisibles(texto, visibles, presentes) {
+  if (typeof texto !== 'string' || !texto.trim()) return '';
+  const baja = s => String(s || '').toLowerCase();
+  const vis = [...new Set((Array.isArray(visibles) ? visibles : []).map(baja).filter(Boolean))];
+  const fuera = [...new Set((Array.isArray(presentes) ? presentes : []).map(baja).filter(Boolean))].filter(n => !vis.includes(n));
+  const frases = texto.split(/(?<=[.;])\s+/).map(f => f.trim()).filter(Boolean);
+  const kept = frases.filter(f => {
+    const t = baja(f);
+    if (fuera.some(n => t.includes(n))) return false;
+    return vis.some(n => t.includes(n));
+  });
+  if (!kept.length) return '';
+  return kept.join('; ').replace(/;+$/, '') + '.';
+}
+
 // Nombre de un personaje o de una variante (la variante se llama como su madre).
 export function nombreDe(u, id) {
   const v = (u.variantes || []).find(x => x.id === id);

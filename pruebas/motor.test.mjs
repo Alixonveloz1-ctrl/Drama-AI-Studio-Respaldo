@@ -283,6 +283,20 @@ test('desglose: las escenas se agrupan sin pasarse de 5 escenas ni de 24 planos 
   assert.equal(grupos.flat().length, 3);
 });
 
+test('primer plano: el estado que se manda a la imagen habla solo del visible', () => {
+  const estado = "Lin Ye stands center holding Zhao's other wrist; Zhao Tigre is on his knees, screaming in agony, dropping the knife; Su Muxue is in the background. The contract is on the ground.";
+  assert.equal(
+    D.textoSoloVisibles(estado, ['Zhao Tigre'], ['Lin Ye', 'Su Muxue', 'Zhao Tigre']),
+    'Zhao Tigre is on his knees, screaming in agony, dropping the knife.',
+  );
+  // Una frase que mezcla visible y fuera de cuadro se quita entera: describir
+  // la acción del otro en un rostro es la contradicción que atascaba a Google.
+  assert.equal(
+    D.textoSoloVisibles('Zhao Tigre drops the knife as Lin Ye crushes his wrist further.', ['Zhao Tigre'], ['Lin Ye', 'Zhao Tigre']),
+    '',
+  );
+});
+
 // ─── Videos ───
 import * as V from '../estudio/videos.mjs';
 
